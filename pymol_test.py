@@ -162,7 +162,7 @@ if __name__=='__main__':
     psm_list = modified_peptide_from_psm(psm_tsv)
     ptm_loc_list = freq_array_and_PTM_index_generator(psm_list,protein_dict['Q8TER0'])[-1]
 
-    base_path = 'C:/tools/pymol-exporter-0.01/pymol_exporter/'
+    base_path = 'C:/tools/pymol-exporter-0.01/pymol_exporter/'  # JS folder path required for html
     protein_list = ['Q3V1M1','P10107']
     pdb_path_list = [file for each in protein_list for file in glob(pdb_file_base_path+'*'+each+'*.pdb')]
     for protein_id, pdb in zip(protein_list,pdb_path_list):
