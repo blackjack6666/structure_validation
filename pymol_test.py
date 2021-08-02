@@ -151,6 +151,7 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
     :param png_sava_path:
     :return:
     """
+
     import time
     time_start = time.time()
     freq_array, ptm_loc_list, PTM_sites_counting = freq_array_and_PTM_index_generator(peptide_list,protein_seq)
@@ -269,18 +270,21 @@ if __name__=='__main__':
     pdb_file_base_path = 'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/'
 
     peptide_tsv = 'D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_seq_240D/peptide.tsv'
-    psm_tsv = 'D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_seq_240D/psm.tsv'
+
+    psm_tsv_list = ['D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_seq_30D/psm.tsv']
+
     fasta_file = 'D:/data/Naba_deep_matrisome/uniprot-proteome_UP000000589_mouse_human_SNED1.fasta'
     peptide_list = peptide_counting(peptide_tsv)
     protein_dict = fasta_reader(fasta_file)
-    psm_list = modified_peptide_from_psm(psm_tsv)
+    psm_list = [psm for file in psm_tsv_list for psm in modified_peptide_from_psm(file)]
 
-    protein_list = pd.read_excel('D:/data/Naba_deep_matrisome/07232021_secondsearch/7_24_ecm_aggregated_D_F_average.xlsx',index_col=0).index.tolist()
+    # protein_list = pd.read_excel('D:/data/Naba_deep_matrisome/07232021_secondsearch/7_24_ecm_aggregated_D_F_average.xlsx',index_col=0).index.tolist()
+    protein_list = ['Q8TER0']
     protein_dict_sub = {prot:protein_dict[prot] for prot in protein_list}
-    base_path = 'C:/tools/pymol-exporter-0.01/pymol_exporter/'  # JS folder path required for html
+    base_path = 'C:/tools/pymol-exporter-0.01/pymol_exporter/'  # JS folder path includes JS files required in html
 
     pdb_path_list = [file for each in protein_list for file in glob(pdb_file_base_path+'*'+each+'*.pdb')]
-    show_3d_batch(psm_list,protein_dict_sub,pdb_file_base_path,base_path)
+    show_3d_batch(psm_list,protein_dict_sub,pdb_file_base_path,glmol_basepath=None)
     # for protein_id, pdb in zip(protein_list,pdb_path_list):
     #
     #     show_cov_3d(psm_list,protein_dict[protein_id],pdb, base_path=base_path)
