@@ -59,17 +59,19 @@ def freq_array_and_PTM_index_generator(peptide_list, protein_seq_string,regex_pa
     freq_array = np.zeros(len(protein_seq_string))
     PTM_sites_counting = defaultdict(int)
     PTM_loc_list = []
-    #print peptide_list
 
     # reformat the peptide with PTM numbers into characters only
     new_pep_list = [re.sub(regex_pat, my_replace, pep) for pep in peptide_list]
     PTM_list = [re.findall(regex_pat, pep) for pep in peptide_list]
     # print (PTM_list)
     # calculation
+
     for pep, new_pep, PTM in zip(peptide_list, new_pep_list,PTM_list):  # PTM_list is list of list
         if new_pep in protein_seq_string:
+
             start_pos = protein_seq_string.find(new_pep)
             end_pos = start_pos + len(new_pep) -1
+            # print (start_pos,end_pos,new_pep)
             freq_array[start_pos:end_pos + 1] += 1
             if PTM:  # the peptide has ptm site
                 for ele in PTM:
@@ -79,6 +81,7 @@ def freq_array_and_PTM_index_generator(peptide_list, protein_seq_string,regex_pa
                     PTM_sites_counting[ele] += 1
                     PTM_loc_list.append(start_pos+PTM_index)
     # print (PTM_sites_counting, PTM_loc_list)
+
     return freq_array, PTM_loc_list, PTM_sites_counting
 
 
@@ -96,7 +99,6 @@ def freq_ptm_index_gen_batch(psm_list, protein_dict, regex_pat='\w{1}\[\d+\.?\d+
     ptm_site_counting = defaultdict(int)
     id_ptm_idx_dict = {}
 
-    psm_count_dict = Counter(psm_list)  # count psm number for same sequence
     peptide_psm_dict = defaultdict(list) # append all psm into a dictionary
     for each in psm_list:
         each_reg_sub = re.sub(regex_pat, my_replace, each)
@@ -108,11 +110,13 @@ def freq_ptm_index_gen_batch(psm_list, protein_dict, regex_pat='\w{1}\[\d+\.?\d+
     zero_line = commons.zero_line_for_seq(seq_line)
     ptm_index_line = commons.zero_line_for_seq(seq_line)
     separtor_pos_array = commons.separator_pos(seq_line)
+
     aho_result = automaton_matching(automaton_trie([pep for pep in peptide_psm_dict]),seq_line)
 
     for tp in aho_result:
-        matched_pep = tp[2]
-        zero_line[tp[0]:tp[1]+1]+=psm_count_dict[matched_pep]
+        matched_pep = tp[2]  # without ptm site
+        zero_line[tp[0]:tp[1]+1]+=len(peptide_psm_dict[matched_pep])
+        # print (tp[0],tp[1],matched_pep, 'aho')
         for psm in peptide_psm_dict[matched_pep]:
             psm_mod = re.findall(regex_pat,psm)
             if psm_mod: # if psm has mod
@@ -139,7 +143,6 @@ def modified_peptide_from_psm(psm_path):
             else:
                 psm_list.append(line_split[2])
     return psm_list
-
 
 
 def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_path=None):
@@ -261,6 +264,8 @@ def show_3d_batch(psm_list, protein_dict, pdb_base_path, glmol_basepath=None):
         else:
             print (f'{id} not exist in pdb database')
             continue
+        pymol.cmd.quit()
+
 
 
 if __name__=='__main__':
@@ -270,9 +275,9 @@ if __name__=='__main__':
     pdb_file_base_path = 'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/'
 
     peptide_tsv = 'D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_seq_240D/peptide.tsv'
-
-    psm_tsv_list = ['D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_seq_30D/psm.tsv']
-
+    time_point_rep = ['30D', '30F', '120D', '120F', '240D', '240F', '1080D','1080F']
+    psm_tsv_list = ['D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_seq_'+each+'/psm.tsv' for each in time_point_rep]
+    print (f'{len(psm_tsv_list)} psm files to read...')
     fasta_file = 'D:/data/Naba_deep_matrisome/uniprot-proteome_UP000000589_mouse_human_SNED1.fasta'
     peptide_list = peptide_counting(peptide_tsv)
     protein_dict = fasta_reader(fasta_file)
@@ -284,7 +289,9 @@ if __name__=='__main__':
     base_path = 'C:/tools/pymol-exporter-0.01/pymol_exporter/'  # JS folder path includes JS files required in html
 
     pdb_path_list = [file for each in protein_list for file in glob(pdb_file_base_path+'*'+each+'*.pdb')]
-    show_3d_batch(psm_list,protein_dict_sub,pdb_file_base_path,glmol_basepath=None)
+    # show_3d_batch(psm_list,protein_dict_sub,pdb_file_base_path,glmol_basepath=None)
+
+    show_cov_3d(psm_list,protein_dict_sub['Q8TER0'],'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q8TER0-F1-model_v1.pdb')
     # for protein_id, pdb in zip(protein_list,pdb_path_list):
     #
     #     show_cov_3d(psm_list,protein_dict[protein_id],pdb, base_path=base_path)
