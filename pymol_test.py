@@ -131,6 +131,59 @@ def freq_ptm_index_gen_batch(psm_list, protein_dict, regex_pat='\w{1}\[\d+\.?\d+
 
     return id_freq_array_dict,id_ptm_idx_dict
 
+
+def freq_ptm_index_gen_batch_v2(psm_list, protein_dict, regex_dict=None):
+    """
+
+    :param psm_list:
+    :param protein_dict:
+    :param regex_dict: {regex:HEX color}
+    :return:
+    """
+
+    from collections import Counter
+    from collections import defaultdict
+    id_freq_array_dict = {}
+    ptm_site_counting = defaultdict(int)
+    id_ptm_idx_dict = {}  # {protein_id:{ptm1:nonzero_index_array,ptm2:nonzero_index_array,...}}
+
+    regex_pat = '\w{1}\[\d+\.?\d+\]' # universal ptm pattern
+    peptide_psm_dict = defaultdict(list)  # append all psm into a dictionary, {peptide:[psm1,psm2,...]}
+    for each in psm_list:
+
+        each_reg_sub = re.sub(regex_pat, my_replace, each)
+        peptide_psm_dict[each_reg_sub].append(each)
+
+    # aho mapping
+    id_list, seq_list = commons.extract_UNID_and_seq(protein_dict)
+    seq_line = commons.creat_total_seq_line(seq_list, sep="|")
+    zero_line = commons.zero_line_for_seq(seq_line)
+    ptm_index_line_dict = {each:commons.zero_line_for_seq(seq_line) for each in regex_dict} if regex_dict else False
+    separtor_pos_array = commons.separator_pos(seq_line)
+
+    aho_result = automaton_matching(automaton_trie([pep for pep in peptide_psm_dict]), seq_line)
+    for tp in aho_result:
+        matched_pep = tp[2]  # without ptm site
+        zero_line[tp[0]:tp[1]+1]+=len(peptide_psm_dict[matched_pep])
+        if ptm_index_line_dict:  # if ptm enabled
+            for psm in peptide_psm_dict[matched_pep]:
+                for ptm in regex_dict:
+                    ptm_mod = re.findall(ptm,psm)
+                    if ptm_mod:
+                        for ele in ptm_mod:
+                            ptm_idx = psm.find(ele)
+                            ptm_index_line_dict[ptm][tp[0] + ptm_idx] += 1
+
+    for i in range(len(separtor_pos_array)-1):
+
+        id_freq_array_dict[id_list[i]] = zero_line[separtor_pos_array[i]+1:separtor_pos_array[i+1]].tolist()
+        if ptm_index_line_dict:
+            id_ptm_idx_dict[id_list[i]]= {ptm:np.nonzero(ptm_index_line_dict[ptm][separtor_pos_array[i]+1:separtor_pos_array[i+1]])[0]+1
+                                          for ptm in ptm_index_line_dict}
+
+    return id_freq_array_dict, id_ptm_idx_dict
+
+
 def modified_peptide_from_psm(psm_path):
     psm_list = []
     with open(psm_path, 'r') as f_open:
@@ -215,6 +268,83 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
     # pymol.cmd.quit()
 
 
+def show_cov_3d_v2(protein_id,
+                   pdb_file,
+                   id_freq_array_dict,
+                   id_ptm_idx_dict,
+                   regex_color_dict= None,
+                   png_sava_path=None,
+                   base_path=None):
+    """
+
+    :param peptide_list:
+    :param protein_seq:
+    :param pdb_file:
+    :param id_freq_array_dict: returned by freq_ptm_index_gen_batch_v2
+    :param id_ptm_idx_dict: returned by freq_ptm_index_gen_batch_v2
+    :param png_sava_path:
+    :param base_path: html output base path
+    :return:
+    """
+    time_start = time.time()
+    frequency_array = id_freq_array_dict[protein_id]
+    if id_ptm_idx_dict != {}:
+        ptm_nonzero_idx_dict = id_ptm_idx_dict[protein_id]
+    else:
+        ptm_nonzero_idx_dict = None
+
+    pdb_name = os.path.split(pdb_file)[1]
+    print(pdb_name)
+    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    pymol.finish_launching()
+    pymol.cmd.load(pdb_file, pdb_name)
+    pymol.cmd.disable("all")
+    pymol.cmd.enable()
+    print(pymol.cmd.get_names())
+    pymol.cmd.hide('all')
+    pymol.cmd.show('cartoon')
+    pymol.cmd.set('ray_opaque_background', 0)
+    pymol.cmd.bg_color('black')
+
+    print (ptm_nonzero_idx_dict)
+    max_freq = np.max(frequency_array)
+    for i, j in enumerate(frequency_array): # iterate over each residue position
+        ptm = False
+        if ptm_nonzero_idx_dict:
+            for ptm_regex in ptm_nonzero_idx_dict:
+                # if index has ptm
+                if i in ptm_nonzero_idx_dict[ptm_regex]:
+                    ptm = True
+                    pymol.cmd.color(regex_color_dict[ptm_regex], 'resi %i' % (i + 1))
+
+        if ptm == False:  # if no ptm found
+            if frequency_array[i] == 0:
+                pymol.cmd.color('grey', 'resi %i' % (i + 1))
+            elif 1 <= frequency_array[i] < 0.2 * max_freq:
+                pymol.cmd.color('paleyellow', 'resi %i' % (i + 1))
+            elif 0.2 * max_freq <= frequency_array[i] < 0.4 * max_freq:
+                pymol.cmd.color('tv_yellow', 'resi %i' % (i + 1))
+            elif 0.4 * max_freq <= frequency_array[i] < 0.6 * max_freq:
+                pymol.cmd.color('yelloworange', 'resi %i' % (i + 1))
+            elif 0.6 * max_freq <= frequency_array[i] < 0.8 * max_freq:
+                pymol.cmd.color('tv_orange', 'resi %i' % (i + 1))
+            else:
+                pymol.cmd.color('sand', 'resi %i' % (i + 1))
+        else: # ptm color assigned, move on to the next residue
+            continue
+
+    if png_sava_path:
+        pymol.cmd.png(png_sava_path)
+
+    print (f'image saved to {png_sava_path}')
+
+    # pymol2glmol, convert pdb to pse and visualize through html
+    dump_rep(pdb_name,base_path)
+    print(f'time used for mapping: {pdb_name, time.time() - time_start}')
+    # Get out!
+    pymol.cmd.quit()
+
+
 def show_3d_batch(psm_list, protein_dict, pdb_base_path, glmol_basepath=None):
     """
     output 3d html glmol in batch
@@ -279,6 +409,7 @@ def show_3d_batch(psm_list, protein_dict, pdb_base_path, glmol_basepath=None):
 
 
 
+
 if __name__=='__main__':
     import time
     import pandas as pd
@@ -295,17 +426,15 @@ if __name__=='__main__':
     psm_list = [psm for file in psm_tsv_list for psm in modified_peptide_from_psm(file)]
 
     # protein_list = pd.read_excel('D:/data/Naba_deep_matrisome/07232021_secondsearch/7_24_ecm_aggregated_D_F_average.xlsx',index_col=0).index.tolist()
-    protein_list = ['Q8TER0']
+    protein_list = ['Q8TER0','P10853','Q01149']
     protein_dict_sub = {prot:protein_dict[prot] for prot in protein_list}
     base_path = 'C:/tools/pymol-exporter-0.01/pymol_exporter/'  # JS folder path includes JS files required in html
 
     pdb_path_list = [file for each in protein_list for file in glob(pdb_file_base_path+'*'+each+'*.pdb')]
     # show_3d_batch(psm_list,protein_dict_sub,pdb_file_base_path,glmol_basepath=None)
 
-    show_cov_3d(psm_list,protein_dict_sub['Q8TER0'],'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q8TER0-F1-model_v1.pdb',base_path='D:/data/alphafold_pdb/')
-    # for protein_id, pdb in zip(protein_list,pdb_path_list):
-    #
-    #     show_cov_3d(psm_list,protein_dict[protein_id],pdb, base_path=base_path)
+    # show_cov_3d(psm_list,protein_dict_sub['Q8TER0'],'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q8TER0-F1-model_v1.pdb',base_path='D:/data/alphafold_pdb/')
 
-    # pymol.cmd.load('your_session.pse')
-    # dump_rep('AF-Q5ZQU0-F1-model_v1',base_path='C:/tools/pymol-exporter-0.01/pymol_exporter')
+    id_freq_array_dict, id_ptm_idx_dict = freq_ptm_index_gen_batch_v2(psm_list,protein_dict_sub,regex_dict={'P\[113\]':';#FF0000'})
+    show_cov_3d_v2('Q01149','D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q01149-F1-model_v1.pdb',
+                   id_freq_array_dict,id_ptm_idx_dict,regex_color_dict={'P\[113\]':'red'})

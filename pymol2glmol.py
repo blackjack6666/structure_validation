@@ -171,7 +171,7 @@ def dump_rep(name, base_path=None):
     if base_path:
         f = open(base_path+name + '.html', 'w')
     else:
-        f = open(name + '.html', 'w')
+        f = open(name.split('-')[1] + '.html', 'w')
     f.write(template)
     f.close()
 
