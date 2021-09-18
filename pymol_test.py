@@ -165,13 +165,20 @@ def freq_ptm_index_gen_batch_v2(psm_list, protein_dict, regex_dict=None):
     for tp in aho_result:
         matched_pep = tp[2]  # without ptm site
         zero_line[tp[0]:tp[1]+1]+=len(peptide_psm_dict[matched_pep])
+        # ptm assign might need to be optimized
         if ptm_index_line_dict:  # if ptm enabled
             for psm in peptide_psm_dict[matched_pep]:
                 for ptm in regex_dict:
-                    ptm_mod = re.findall(ptm,psm)
+                    # only keep one ptm in psm if there are multiple for correct index finding
+                    new_psm = re.sub('(?!'+ptm[1:]+')\[\d+\.?\d+\]','',psm)
+
+                    ptm_mod = re.findall(ptm, new_psm)
+                    print(ptm_mod)
                     if ptm_mod:
                         for ele in ptm_mod:
-                            ptm_idx = psm.find(ele)
+                            print (new_psm)
+                            ptm_idx = new_psm.find(ele)
+                            print(matched_pep, tp[0], ele, ptm_idx)
                             ptm_index_line_dict[ptm][tp[0] + ptm_idx] += 1
 
     for i in range(len(separtor_pos_array)-1):
@@ -180,7 +187,7 @@ def freq_ptm_index_gen_batch_v2(psm_list, protein_dict, regex_dict=None):
         if ptm_index_line_dict:
             id_ptm_idx_dict[id_list[i]]= {ptm:np.nonzero(ptm_index_line_dict[ptm][separtor_pos_array[i]+1:separtor_pos_array[i+1]])[0]+1
                                           for ptm in ptm_index_line_dict}
-
+    print (id_ptm_idx_dict)
     return id_freq_array_dict, id_ptm_idx_dict
 
 
@@ -308,7 +315,7 @@ def show_cov_3d_v2(protein_id,
 
     print (ptm_nonzero_idx_dict)
     max_freq = np.max(frequency_array)
-    for i, j in enumerate(frequency_array): # iterate over each residue position
+    for i in range(len(frequency_array)): # iterate over each residue position
         ptm = False
         if ptm_nonzero_idx_dict:
             for ptm_regex in ptm_nonzero_idx_dict:
@@ -417,16 +424,19 @@ if __name__=='__main__':
     pdb_file_base_path = 'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/'
 
     peptide_tsv = 'D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_seq_240D/peptide.tsv'
-    time_point_rep = ['30D', '30F', '120D', '120F', '240D', '240F', '1080D','1080F']
+    time_point_rep = ['1080D']
     psm_tsv_list = ['D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_seq_'+each+'/psm.tsv' for each in time_point_rep]
     print (f'{len(psm_tsv_list)} psm files to read...')
     fasta_file = 'D:/data/Naba_deep_matrisome/uniprot-proteome_UP000000589_mouse_human_SNED1.fasta'
     peptide_list = peptide_counting(peptide_tsv)
     protein_dict = fasta_reader(fasta_file)
-    psm_list = [psm for file in psm_tsv_list for psm in modified_peptide_from_psm(file)]
+    # psm_list = [psm for file in psm_tsv_list for psm in modified_peptide_from_psm(file)]
 
     # protein_list = pd.read_excel('D:/data/Naba_deep_matrisome/07232021_secondsearch/7_24_ecm_aggregated_D_F_average.xlsx',index_col=0).index.tolist()
-    protein_list = ['Q8TER0','P10853','Q01149']
+    protein_list = ['Q01149','P10853']
+    print (protein_dict['Q01149'][385])
+
+
     protein_dict_sub = {prot:protein_dict[prot] for prot in protein_list}
     base_path = 'C:/tools/pymol-exporter-0.01/pymol_exporter/'  # JS folder path includes JS files required in html
 
@@ -435,6 +445,7 @@ if __name__=='__main__':
 
     # show_cov_3d(psm_list,protein_dict_sub['Q8TER0'],'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q8TER0-F1-model_v1.pdb',base_path='D:/data/alphafold_pdb/')
 
-    id_freq_array_dict, id_ptm_idx_dict = freq_ptm_index_gen_batch_v2(psm_list,protein_dict_sub,regex_dict={'P\[113\]':';#FF0000'})
+    psm_list = ['GEP[113]GSVGAQGPPGPSGEEGK[144]','GLVGEP[113]GPAGSK','SGQP[113]GPVGPAGVR','GTP[113]GESGAAGPSGPIGSR']
+    id_freq_array_dict, id_ptm_idx_dict = freq_ptm_index_gen_batch_v2(psm_list,protein_dict_sub,regex_dict={'P\[113\]':'red', 'K\[144\]':'blue'})
     show_cov_3d_v2('Q01149','D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q01149-F1-model_v1.pdb',
-                   id_freq_array_dict,id_ptm_idx_dict,regex_color_dict={'P\[113\]':'red'})
+                   id_freq_array_dict,id_ptm_idx_dict,regex_color_dict={'P\[113\]':'red', 'K\[144\]':'blue'})
