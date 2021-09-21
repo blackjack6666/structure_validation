@@ -1,4 +1,4 @@
-from pymol_test import freq_array_and_PTM_index_generator
+from pymol_test import freq_array_and_PTM_index_generator,freq_ptm_index_gen_batch_v2
 import pymol
 from pymol2glmol import *
 import numpy as np
@@ -30,7 +30,7 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
     pymol.cmd.disable("all")
     pymol.cmd.enable()
     print(pymol.cmd.get_names())
-    pymol.cmd.hide('all')
+    # pymol.cmd.hide('all')
     pymol.cmd.show('cartoon')
     pymol.cmd.set('ray_opaque_background', 0)
     pymol.cmd.bg_color('white')
@@ -52,19 +52,77 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
     # pymol.cmd.set('stick_color', 'blue')
     # pymol.cmd.set('stick_radius', 0.7)
 
+    # rotate camera
+    # pymol.cmd.rotate('x',180)
 
     if png_sava_path:
         pymol.cmd.png(png_sava_path)
+    time.sleep(1)
+
 
     print (f'image saved to {png_sava_path}')
 
     # pymol2glmol, convert pdb to pse and visualize through html
-    dump_rep(pdb_name,base_path)
+    # dump_rep(pdb_name,base_path)
+    pymol.cmd.delete(pdb_name)
     print(f'time used for mapping: {pdb_name, time.time() - time_start}')
     # pymol.cmd.save('new_file.pse')
     # Get out!
     # pymol.cmd.quit()
 
+
+def show_3d_batch(psm_list, protein_dict, pdb_base_path, png_save_path, time_point='1h',glmol_basepath=None):
+    """
+    output 3d html glmol in batch
+    :param psm_list: psm list with modification M[#]
+    :param protein_dict: protein dictionary
+    :param pdb_file:
+    :param base_path:
+    :return:
+    """
+    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    pymol.finish_launching()
+
+    id_freq_array_dict, id_ptm_idx_dict = freq_ptm_index_gen_batch_v2(psm_list,protein_dict)
+
+    for id in id_freq_array_dict:
+        time_start = time.time()
+        pdb_path = pdb_base_path+'AF-'+id+'-F1-model_v1.pdb'
+        if os.path.exists(pdb_path): # if local pdb db has this id entry
+            pdb_name = os.path.split(pdb_path)[1]
+            print(pdb_name)
+            pymol.cmd.load(pdb_path, pdb_name)
+            pymol.cmd.disable("all")
+            pymol.cmd.enable()
+            # print(pymol.cmd.get_names())
+            pymol.cmd.hide('all')
+            pymol.cmd.show('cartoon')
+            pymol.cmd.set('ray_opaque_background', 0)
+            pymol.cmd.bg_color('white')
+            # stick cysteines
+            # pymol.cmd.select('cysteines','resn cys')
+            # pymol.cmd.show('sticks','cysteines')
+
+            # highlight covered region
+            freq_array = id_freq_array_dict[id]
+            max_freq = np.max(freq_array)
+            for i, j in enumerate(freq_array):
+
+                if freq_array[i] == 0:
+                    pymol.cmd.color('grey', 'resi %i' % (i + 1))
+
+                else:
+                    pymol.cmd.color('red', 'resi %i' % (i + 1))
+            pymol.cmd.png(png_save_path+id+'_'+time_point+'.png')
+
+            # pymol2glmol, convert pdb to pse and visualize through html
+            # dump_rep(pdb_name, glmol_basepath)
+            print(f'time used for mapping: {pdb_name, time.time() - time_start}')
+        else:
+            print (f'{id} not exist in pdb database')
+            continue
+        # pymol.cmd.delete(pdb_name)
+        # pymol.cmd.quit()
 
 if __name__ == '__main__':
     import time
@@ -74,22 +132,57 @@ if __name__ == '__main__':
     pdb_file_base_path = 'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/'
 
     peptide_tsv = 'D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_seq_240D/peptide.tsv'
-    time_point_rep = ['1h','2h','4h','18h']
+    time_point_rep = ['1h']
     psm_tsv_list = ['D:/data/native_protein_digestion/'+ each + '_1_native/psm.tsv' for each in time_point_rep]
     print(f'{len(psm_tsv_list)} psm files to read...')
+
     fasta_file = 'D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_only.fasta'
     peptide_list = peptide_counting(peptide_tsv)
     protein_dict = fasta_reader(fasta_file)
+    """
     psm_list = [psm for file in psm_tsv_list for psm in modified_peptide_from_psm(file)]
 
     # protein_list = pd.read_excel('D:/data/Naba_deep_matrisome/07232021_secondsearch/7_24_ecm_aggregated_D_F_average.xlsx',index_col=0).index.tolist()
-    protein_list = ['P08758']
+    protein_list = ['P61604']
     protein_dict_sub = {prot: protein_dict[prot] for prot in protein_list}
     base_path = 'C:/tools/pymol-exporter-0.01/pymol_exporter/'  # JS folder path includes JS files required in html
 
     pdb_path_list = [file for each in protein_list for file in glob(pdb_file_base_path + '*' + each + '*.pdb')]
     # show_3d_batch(psm_list,protein_dict_sub,pdb_file_base_path,glmol_basepath=None)
 
-    show_cov_3d(psm_list, protein_dict_sub['P08758'],
-                'D:/data/alphafold_pdb/AF-P08758-F1-model_v1.pdb', png_sava_path='D:/data/alphafold_pdb/native_digest_time_laps/ANXA5_18h.png',
+    show_cov_3d(psm_list, protein_dict_sub['P61604'],
+                'D:/data/alphafold_pdb/AF-P61604-F1-model_v1.pdb', png_sava_path='D:/data/alphafold_pdb/native_digest_time_laps/HSPE1_1h.png',
                 base_path='D:/data/alphafold_pdb/')
+
+    """
+    protein_list = pd.read_excel('D:/data/native_protein_digestion/native_digest_cassette_aggrecov.xlsx', index_col=0).index
+    pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
+    time_points = ['1h','2h','4h','18h']
+
+    psm_dict = {val:[psm for file in ['D:/data/native_protein_digestion/' + each + '_1_native/psm.tsv' for each in time_points[:idx+1]]
+                     for psm in modified_peptide_from_psm(file)]
+                for idx, val in enumerate(time_points)}
+
+
+    for each_protein in protein_list:
+        pdb_file_name = 'AF-'+each_protein+'-F1-model_v1.pdb'
+        if os.path.exists(pdb_base_path+pdb_file_name):
+            print (each_protein)
+            for val in time_points:
+                print (val)
+                psm_list = psm_dict[val]
+                show_cov_3d(psm_list,protein_dict[each_protein],pdb_base_path+pdb_file_name,
+                            png_sava_path='D:/data/native_protein_digestion/dialysis_cassette_cov_png/'+each_protein+'_'+val+'.png')
+
+        else:
+            print (f"{pdb_file_name} not existed")
+
+    #
+
+    # for i in ['1h','2h','4h','18h']:
+    #     show_cov_3d(psm_dict[i],protein_dict['P61604'],pdb_base_path+'AF-P61604-F1-model_v1.pdb',
+    #             'D:/data/native_protein_digestion/dialysis_cassette_cov_png/P61604'+'_'+i+'.png')
+
+    # sub_protein_dict = {each:protein_dict[each] for each in protein_list}
+    # show_3d_batch(psm_dict['1h'],sub_protein_dict,pdb_base_path,
+    #               png_save_path='D:/data/native_protein_digestion/dialysis_cassette_cov_png/',time_point='1h')

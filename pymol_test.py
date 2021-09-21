@@ -284,21 +284,23 @@ def show_cov_3d_v2(protein_id,
                    base_path=None):
     """
 
-    :param peptide_list:
-    :param protein_seq:
+    :param protein_id:
     :param pdb_file:
     :param id_freq_array_dict: returned by freq_ptm_index_gen_batch_v2
     :param id_ptm_idx_dict: returned by freq_ptm_index_gen_batch_v2
     :param png_sava_path:
     :param base_path: html output base path
+    :param regex_color_dict {regex: RGB_list}
     :return:
     """
     time_start = time.time()
     frequency_array = id_freq_array_dict[protein_id]
     if id_ptm_idx_dict != {}:
         ptm_nonzero_idx_dict = id_ptm_idx_dict[protein_id]
+
     else:
         ptm_nonzero_idx_dict = None
+
 
     pdb_name = os.path.split(pdb_file)[1]
     print(pdb_name)
@@ -313,16 +315,23 @@ def show_cov_3d_v2(protein_id,
     pymol.cmd.set('ray_opaque_background', 0)
     pymol.cmd.bg_color('black')
 
+    # set customized color
+    if regex_color_dict:
+        for i in regex_color_dict:
+            pymol.cmd.set_color(i,regex_color_dict[i])
+
+
     print (ptm_nonzero_idx_dict)
     max_freq = np.max(frequency_array)
     for i in range(len(frequency_array)): # iterate over each residue position
         ptm = False
         if ptm_nonzero_idx_dict:
+
             for ptm_regex in ptm_nonzero_idx_dict:
                 # if index has ptm
                 if i in ptm_nonzero_idx_dict[ptm_regex]:
                     ptm = True
-                    pymol.cmd.color(regex_color_dict[ptm_regex], 'resi %i' % (i + 1))
+                    pymol.cmd.color(ptm_regex, 'resi %i' % (i + 1))
 
         if ptm == False:  # if no ptm found
             if frequency_array[i] == 0:
@@ -415,9 +424,8 @@ def show_3d_batch(psm_list, protein_dict, pdb_base_path, glmol_basepath=None):
         pymol.cmd.quit()
 
 
-
-
 if __name__=='__main__':
+
     import time
     import pandas as pd
 
@@ -446,6 +454,6 @@ if __name__=='__main__':
     # show_cov_3d(psm_list,protein_dict_sub['Q8TER0'],'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q8TER0-F1-model_v1.pdb',base_path='D:/data/alphafold_pdb/')
 
     psm_list = ['GEP[113]GSVGAQGPPGPSGEEGK[144]','GLVGEP[113]GPAGSK','SGQP[113]GPVGPAGVR','GTP[113]GESGAAGPSGPIGSR']
-    id_freq_array_dict, id_ptm_idx_dict = freq_ptm_index_gen_batch_v2(psm_list,protein_dict_sub,regex_dict={'P\[113\]':'red', 'K\[144\]':'blue'})
+    id_freq_array_dict, id_ptm_idx_dict = freq_ptm_index_gen_batch_v2(psm_list,protein_dict_sub,regex_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,255,1]})
     show_cov_3d_v2('Q01149','D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q01149-F1-model_v1.pdb',
-                   id_freq_array_dict,id_ptm_idx_dict,regex_color_dict={'P\[113\]':'red', 'K\[144\]':'blue'})
+                   id_freq_array_dict,id_ptm_idx_dict,regex_color_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,255,1]})
