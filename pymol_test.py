@@ -143,10 +143,12 @@ def freq_ptm_index_gen_batch_v2(psm_list, protein_dict, regex_dict=None):
 
     from collections import Counter
     from collections import defaultdict
+    from heapq import heappush, heappop
+
     id_freq_array_dict = {}
     ptm_site_counting = defaultdict(int)
     id_ptm_idx_dict = {}  # {protein_id:{ptm1:nonzero_index_array,ptm2:nonzero_index_array,...}}
-
+    h = []
     regex_pat = '\w{1}\[\d+\.?\d+\]' # universal ptm pattern
     peptide_psm_dict = defaultdict(list)  # append all psm into a dictionary, {peptide:[psm1,psm2,...]}
     for each in psm_list:
@@ -181,14 +183,21 @@ def freq_ptm_index_gen_batch_v2(psm_list, protein_dict, regex_dict=None):
                             print(matched_pep, tp[0], ele, ptm_idx)
                             ptm_index_line_dict[ptm][tp[0] + ptm_idx] += 1
 
+    time_start = time.time()
     for i in range(len(separtor_pos_array)-1):
+        zero_line_slice = zero_line[separtor_pos_array[i]+1:separtor_pos_array[i+1]]
+        percentage_cov = np.count_nonzero(zero_line_slice)/len(zero_line_slice)*100
+        heappush(h,(percentage_cov,id_list[i],zero_line_slice))
+        id_freq_array_dict[id_list[i]] = zero_line_slice.tolist()
 
-        id_freq_array_dict[id_list[i]] = zero_line[separtor_pos_array[i]+1:separtor_pos_array[i+1]].tolist()
+
         if ptm_index_line_dict:
             id_ptm_idx_dict[id_list[i]]= {ptm:np.nonzero(ptm_index_line_dict[ptm][separtor_pos_array[i]+1:separtor_pos_array[i+1]])[0]+1
                                           for ptm in ptm_index_line_dict}
-    print (id_ptm_idx_dict)
-    return id_freq_array_dict, id_ptm_idx_dict
+    print (time.time()-time_start)
+
+
+    return id_freq_array_dict, id_ptm_idx_dict, [heappop(h) for i in range(len(h))][::-1]
 
 
 def modified_peptide_from_psm(psm_path):
@@ -438,7 +447,7 @@ if __name__=='__main__':
     fasta_file = 'D:/data/Naba_deep_matrisome/uniprot-proteome_UP000000589_mouse_human_SNED1.fasta'
     peptide_list = peptide_counting(peptide_tsv)
     protein_dict = fasta_reader(fasta_file)
-    # psm_list = [psm for file in psm_tsv_list for psm in modified_peptide_from_psm(file)]
+    psm_list = [psm for file in psm_tsv_list for psm in modified_peptide_from_psm(file)]
 
     # protein_list = pd.read_excel('D:/data/Naba_deep_matrisome/07232021_secondsearch/7_24_ecm_aggregated_D_F_average.xlsx',index_col=0).index.tolist()
     protein_list = ['Q01149','P10853']
@@ -453,7 +462,8 @@ if __name__=='__main__':
 
     # show_cov_3d(psm_list,protein_dict_sub['Q8TER0'],'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q8TER0-F1-model_v1.pdb',base_path='D:/data/alphafold_pdb/')
 
-    psm_list = ['GEP[113]GSVGAQGPPGPSGEEGK[144]','GLVGEP[113]GPAGSK','SGQP[113]GPVGPAGVR','GTP[113]GESGAAGPSGPIGSR']
-    id_freq_array_dict, id_ptm_idx_dict = freq_ptm_index_gen_batch_v2(psm_list,protein_dict_sub,regex_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,255,1]})
-    show_cov_3d_v2('Q01149','D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q01149-F1-model_v1.pdb',
-                   id_freq_array_dict,id_ptm_idx_dict,regex_color_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,255,1]})
+    # psm_list = ['GEP[113]GSVGAQGPPGPSGEEGK[144]','GLVGEP[113]GPAGSK','SGQP[113]GPVGPAGVR','GTP[113]GESGAAGPSGPIGSR']
+    id_freq_array_dict, id_ptm_idx_dict, heap_list = freq_ptm_index_gen_batch_v2(psm_list,protein_dict,regex_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,255,1]})
+    print (heap_list[0])
+    # show_cov_3d_v2('Q01149','D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q01149-F1-model_v1.pdb',
+    #                id_freq_array_dict,id_ptm_idx_dict,regex_color_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,255,1]})
