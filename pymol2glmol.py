@@ -170,8 +170,10 @@ def dump_rep(name, base_path=None):
 
     if base_path:
         f = open(base_path+name + '.html', 'w')
+        print (f'html file to {base_path+name}.html')
     else:
         f = open(name.split('-')[1] + '.html', 'w')
+        print ('html file to %s' % name.split('-')[1]+'.html')
     f.write(template)
     f.close()
 

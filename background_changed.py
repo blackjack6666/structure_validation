@@ -71,6 +71,66 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
     # pymol.cmd.quit()
 
 
+def show_multiple_color(psm_list_2d,protein_seq,pdb_file,color_list,png_save_path=None,base_path=None):
+    """
+    different time points data on a single 3d model
+    :param psm_list_2d: 2D peptide list containing peptides identified from different time point
+    :param protein_seq: target protein sequence
+    :param pdb_file: pdb file absolute path
+    :param color_list: 2d_RGB_list
+    :param png_save_path:
+    :return:
+    """
+    import time
+    time_start = time.time()
+
+    # load variables
+    freq_array_2d = [freq_array_and_PTM_index_generator(psm_list, protein_seq)[0] for psm_list in psm_list_2d]
+    print (len(freq_array_2d))
+    color_dict = {str(i)+'_color':j for i,j in zip(range(len(freq_array_2d)), color_list)} # color correspond to sample
+
+    # initialize pdb file in pymol api
+    pdb_name = os.path.split(pdb_file)[1]
+    print(pdb_name)
+    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    pymol.finish_launching()
+    pymol.cmd.load(pdb_file, pdb_name)
+    pymol.cmd.disable("all")
+    pymol.cmd.enable()
+    print(pymol.cmd.get_names())
+    pymol.cmd.hide('all')
+    pymol.cmd.show('cartoon')
+    pymol.cmd.set('ray_opaque_background', 0)
+    pymol.cmd.bg_color('white')
+
+    # set customized color
+    for sample in color_dict:
+
+        pymol.cmd.set_color(sample,color_dict[sample])
+
+    # color mapped amino acids
+    for i in range(len(protein_seq)):
+        cov = False
+        for j in range(len(freq_array_2d)):
+            if freq_array_2d[j][i] == 0:
+                continue
+            else:
+                cov = True
+                pymol.cmd.color(str(j)+'_color','resi %i' % (i + 1))
+                break
+        if cov == False:
+            pymol.cmd.color('grey', 'resi %i' % (i + 1))
+
+    if png_save_path:
+        pymol.cmd.png(png_save_path)
+
+    print(f'image saved to {png_save_path}')
+    dump_rep(pdb_name,base_path)
+
+    print (f'time used {time.time()-time_start}')
+    pymol.cmd.quit()
+
+
 def show_3d_batch(psm_list, protein_dict, pdb_base_path, png_save_path, time_point='1h',glmol_basepath=None):
     """
     output 3d html glmol in batch

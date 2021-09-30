@@ -191,9 +191,15 @@ def freq_ptm_index_gen_batch_v2(psm_list, protein_dict, regex_dict=None):
         id_freq_array_dict[id_list[i]] = zero_line_slice.tolist()
 
 
+        # if ptm_index_line_dict:
+        #     id_ptm_idx_dict[id_list[i]]= {ptm:np.nonzero(ptm_index_line_dict[ptm][separtor_pos_array[i]+1:separtor_pos_array[i+1]])[0]+1
+        #                                   for ptm in ptm_index_line_dict}
+
         if ptm_index_line_dict:
-            id_ptm_idx_dict[id_list[i]]= {ptm:np.nonzero(ptm_index_line_dict[ptm][separtor_pos_array[i]+1:separtor_pos_array[i+1]])[0]+1
-                                          for ptm in ptm_index_line_dict}
+            id_ptm_idx_dict[id_list[i]] = {ptm: np.array(
+                np.nonzero(ptm_index_line_dict[ptm][separtor_pos_array[i] + 1:separtor_pos_array[i + 1]])[
+                    0] + 1).tolist()
+                                           for ptm in ptm_index_line_dict}
     print (time.time()-time_start)
 
 
@@ -233,7 +239,7 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
     # open pdb file with pymol
     pdb_name = os.path.split(pdb_file)[1]
     print (pdb_name)
-    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    # pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
     pymol.finish_launching()
     pymol.cmd.load(pdb_file, pdb_name)
     pymol.cmd.disable("all")
@@ -277,7 +283,7 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
     print (f'image saved to {png_sava_path}')
 
     # pymol2glmol, convert pdb to pse and visualize through html
-    dump_rep(pdb_name,base_path)
+    # dump_rep(pdb_name,base_path)
     print(f'time used for mapping: {pdb_name, time.time() - time_start}')
     # pymol.cmd.save('new_file.pse')
     # Get out!
@@ -313,7 +319,7 @@ def show_cov_3d_v2(protein_id,
 
     pdb_name = os.path.split(pdb_file)[1]
     print(pdb_name)
-    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    # pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
     pymol.finish_launching()
     pymol.cmd.load(pdb_file, pdb_name)
     pymol.cmd.disable("all")
@@ -333,6 +339,7 @@ def show_cov_3d_v2(protein_id,
     print (ptm_nonzero_idx_dict)
     max_freq = np.max(frequency_array)
     for i in range(len(frequency_array)): # iterate over each residue position
+        # check if there is ptm
         ptm = False
         if ptm_nonzero_idx_dict:
 
@@ -364,10 +371,10 @@ def show_cov_3d_v2(protein_id,
     print (f'image saved to {png_sava_path}')
 
     # pymol2glmol, convert pdb to pse and visualize through html
-    dump_rep(pdb_name,base_path)
+    # dump_rep(pdb_name,base_path)
     print(f'time used for mapping: {pdb_name, time.time() - time_start}')
     # Get out!
-    pymol.cmd.quit()
+    # pymol.cmd.quit()
 
 
 def show_3d_batch(psm_list, protein_dict, pdb_base_path, glmol_basepath=None):
@@ -433,6 +440,30 @@ def show_3d_batch(psm_list, protein_dict, pdb_base_path, glmol_basepath=None):
         pymol.cmd.quit()
 
 
+def pdb_file_reader(pdb_file):
+    """
+    reads a pdb file into protein sequence
+    :param pdb_file:
+    :return:
+    """
+    import re
+    from params import aa_dict,aa_reg_str
+
+    with open(pdb_file,'r') as f_o:
+        f_split = f_o.read().split('\nATOM')[1:]
+        aa_list = [re.search(aa_reg_str,each).group(0) for each in f_split]
+        aa_list = [aa_dict[each] for each in aa_list]
+    protein_seq = ''
+    for i in range(len(aa_list)-1):
+        if aa_list[i+1] == aa_list[i]:
+            continue
+        else:
+            protein_seq += aa_list[i]
+    # add last aa
+    protein_seq+=aa_list[-1]
+    return protein_seq
+
+
 if __name__=='__main__':
 
     import time
@@ -460,10 +491,18 @@ if __name__=='__main__':
     pdb_path_list = [file for each in protein_list for file in glob(pdb_file_base_path+'*'+each+'*.pdb')]
     # show_3d_batch(psm_list,protein_dict_sub,pdb_file_base_path,glmol_basepath=None)
 
-    # show_cov_3d(psm_list,protein_dict_sub['Q8TER0'],'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q8TER0-F1-model_v1.pdb',base_path='D:/data/alphafold_pdb/')
+    # show_cov_3d(psm_list,protein_dict_sub['P10853'],'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-P10853-F1-model_v1.pdb',base_path='D:/data/alphafold_pdb/')
 
-    # psm_list = ['GEP[113]GSVGAQGPPGPSGEEGK[144]','GLVGEP[113]GPAGSK','SGQP[113]GPVGPAGVR','GTP[113]GESGAAGPSGPIGSR']
-    id_freq_array_dict, id_ptm_idx_dict, heap_list = freq_ptm_index_gen_batch_v2(psm_list,protein_dict,regex_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,255,1]})
-    print (heap_list[0])
-    # show_cov_3d_v2('Q01149','D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q01149-F1-model_v1.pdb',
-    #                id_freq_array_dict,id_ptm_idx_dict,regex_color_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,255,1]})
+
+
+    # psm_list = ['FQSSAVM[147]ALQEACEAYLVGLFEDTNLCAIHAK']
+    id_freq_array_dict, id_ptm_idx_dict, heap_list = freq_ptm_index_gen_batch_v2(psm_list,protein_dict,
+                                                                                 regex_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,1,1]})
+    # print (id_ptm_idx_dict['P68433'])
+    # print (heap_list[0])
+    show_cov_3d_v2('P11087','D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-P11087-F1-model_v1.pdb',
+                   id_freq_array_dict,id_ptm_idx_dict,regex_color_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,1,1]})
+    
+
+    # pdb_path = 'C:/Users/gao lab computer/Downloads/MS_SNED1_Suppl_File_S1.pdb'
+    # print(pdb_file_reader(pdb_path))
