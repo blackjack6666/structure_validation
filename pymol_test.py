@@ -440,7 +440,7 @@ def show_3d_batch(psm_list, protein_dict, pdb_base_path, glmol_basepath=None):
         pymol.cmd.quit()
 
 
-def pdb_file_reader(pdb_file):
+def pdb_file_reader(pdb_file_list:list):
     """
     reads a pdb file into protein sequence
     :param pdb_file:
@@ -448,27 +448,34 @@ def pdb_file_reader(pdb_file):
     """
     import re
     from params import aa_dict,aa_reg_str
+    import os
 
-    with open(pdb_file,'r') as f_o:
-        f_split = f_o.read().split('\nATOM')[1:]
-        aa_list = [re.search(aa_reg_str,each).group(0) for each in f_split]
-        aa_list = [aa_dict[each] for each in aa_list]
-    protein_seq = ''
-    for i in range(len(aa_list)-1):
-        if aa_list[i+1] == aa_list[i]:
-            continue
-        else:
-            protein_seq += aa_list[i]
-    # add last aa
-    protein_seq+=aa_list[-1]
-    return protein_seq
+    pdb_protein_seq_dict = {}
+
+    for pdb_file in pdb_file_list:
+        with open(pdb_file,'r') as f_o:
+            f_split = f_o.read().split('\nATOM')[1:]
+            pos_aa_list = [(int(re.search('\d+(?=\s+[+-]?\d+\.)',each).group()),
+                           re.search(aa_reg_str,each).group(0)) for each in f_split]
+            protein_seq = ''
+            for i in range(len(pos_aa_list)-1):
+                if pos_aa_list[i+1][0] == pos_aa_list[i][0]:
+                    continue
+                else:
+                    protein_seq += aa_dict[pos_aa_list[i][1]]
+
+        # add last aa
+        protein_seq+=aa_dict[pos_aa_list[-1][1]]
+        pdb_protein_seq_dict[os.path.split(pdb_file)[-1]] = protein_seq
+        print (protein_seq)
+    return pdb_protein_seq_dict
 
 
 if __name__=='__main__':
 
     import time
     import pandas as pd
-
+    """
     pdb_file_base_path = 'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/'
 
     peptide_tsv = 'D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_seq_240D/peptide.tsv'
@@ -503,6 +510,10 @@ if __name__=='__main__':
     show_cov_3d_v2('P11087','D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-P11087-F1-model_v1.pdb',
                    id_freq_array_dict,id_ptm_idx_dict,regex_color_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,1,1]})
     
-
-    # pdb_path = 'C:/Users/gao lab computer/Downloads/MS_SNED1_Suppl_File_S1.pdb'
-    # print(pdb_file_reader(pdb_path))
+    """
+    pdb_path = 'C:/Users/gao lab computer/Downloads/MS_SNED1_Suppl_File_S1.pdb'
+    pdb_path2 = 'D:/data/alphafold_pdb/AF-P11276-F1-model_v1.pdb'
+    pdb_file_reader([pdb_path])
+    fasta_file = 'D:/data/Naba_deep_matrisome/uniprot-proteome_UP000000589_mouse_human_SNED1.fasta'
+    protein_dict = fasta_reader(fasta_file)
+    print (protein_dict['P11276'])
