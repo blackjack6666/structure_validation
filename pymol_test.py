@@ -33,6 +33,19 @@ def fasta_reader(fasta_file_path):
     return {each.split('\n')[0].split('|')[1]: ''.join(each.split('\n')[1:]) for each in file_split}
 
 
+def fasta_reader2(fasta_path:str):
+
+    gene_protein_seq_dict = {}
+    with open(fasta_path, 'r') as f_o:
+        file_split = f_o.read().split('\n>')
+
+    for each in file_split:
+        first_line, seq = each.split('\n')[0], ''.join(each.split('\n')[1:])
+        uniprot_id = first_line.split('|')[1]
+        gene = first_line.split('GN=')[1].split(' ')[0] if 'GN=' in first_line else 'N/A'
+        gene_protein_seq_dict[gene+'_'+uniprot_id] = seq
+    return gene_protein_seq_dict
+
 def peptide_counting(peptide_tsv_file):
 
     with open(peptide_tsv_file, 'r') as file_open:
@@ -188,7 +201,7 @@ def freq_ptm_index_gen_batch_v2(psm_list, protein_dict, regex_dict=None):
         zero_line_slice = zero_line[separtor_pos_array[i]+1:separtor_pos_array[i+1]]
         percentage_cov = np.count_nonzero(zero_line_slice)/len(zero_line_slice)*100
         heappush(h,(percentage_cov,id_list[i],zero_line_slice))
-        id_freq_array_dict[id_list[i]] = zero_line_slice.tolist()
+        id_freq_array_dict[id_list[i]] = zero_line_slice
 
 
         # if ptm_index_line_dict:
@@ -319,7 +332,7 @@ def show_cov_3d_v2(protein_id,
 
     pdb_name = os.path.split(pdb_file)[1]
     print(pdb_name)
-    # pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
     pymol.finish_launching()
     pymol.cmd.load(pdb_file, pdb_name)
     pymol.cmd.disable("all")
@@ -330,40 +343,41 @@ def show_cov_3d_v2(protein_id,
     pymol.cmd.set('ray_opaque_background', 0)
     pymol.cmd.bg_color('black')
 
-    # set customized color
-    if regex_color_dict:
-        for i in regex_color_dict:
-            pymol.cmd.set_color(i,regex_color_dict[i])
 
-
-    print (ptm_nonzero_idx_dict)
-    max_freq = np.max(frequency_array)
-    for i in range(len(frequency_array)): # iterate over each residue position
-        # check if there is ptm
-        ptm = False
-        if ptm_nonzero_idx_dict:
-
-            for ptm_regex in ptm_nonzero_idx_dict:
-                # if index has ptm
-                if i in ptm_nonzero_idx_dict[ptm_regex]:
-                    ptm = True
-                    pymol.cmd.color(ptm_regex, 'resi %i' % (i + 1))
-
-        if ptm == False:  # if no ptm found
-            if frequency_array[i] == 0:
-                pymol.cmd.color('grey', 'resi %i' % (i + 1))
-            elif 1 <= frequency_array[i] < 0.2 * max_freq:
-                pymol.cmd.color('paleyellow', 'resi %i' % (i + 1))
-            elif 0.2 * max_freq <= frequency_array[i] < 0.4 * max_freq:
-                pymol.cmd.color('tv_yellow', 'resi %i' % (i + 1))
-            elif 0.4 * max_freq <= frequency_array[i] < 0.6 * max_freq:
-                pymol.cmd.color('yelloworange', 'resi %i' % (i + 1))
-            elif 0.6 * max_freq <= frequency_array[i] < 0.8 * max_freq:
-                pymol.cmd.color('tv_orange', 'resi %i' % (i + 1))
-            else:
-                pymol.cmd.color('sand', 'resi %i' % (i + 1))
-        else: # ptm color assigned, move on to the next residue
-            continue
+    # # set customized color
+    # if regex_color_dict:
+    #     for i in regex_color_dict:
+    #         pymol.cmd.set_color(i,regex_color_dict[i])
+    #
+    #
+    # print (ptm_nonzero_idx_dict)
+    # max_freq = np.max(frequency_array)
+    # for i in range(len(frequency_array)): # iterate over each residue position
+    #     # check if there is ptm
+    #     ptm = False
+    #     if ptm_nonzero_idx_dict:
+    #
+    #         for ptm_regex in ptm_nonzero_idx_dict:
+    #             # if index has ptm
+    #             if i in ptm_nonzero_idx_dict[ptm_regex]:
+    #                 ptm = True
+    #                 pymol.cmd.color(ptm_regex, 'resi %i' % (i + 1))
+    #
+    #     if ptm == False:  # if no ptm found
+    #         if frequency_array[i] == 0:
+    #             pymol.cmd.color('grey', 'resi %i' % (i + 1))
+    #         elif 1 <= frequency_array[i] < 0.2 * max_freq:
+    #             pymol.cmd.color('paleyellow', 'resi %i' % (i + 1))
+    #         elif 0.2 * max_freq <= frequency_array[i] < 0.4 * max_freq:
+    #             pymol.cmd.color('tv_yellow', 'resi %i' % (i + 1))
+    #         elif 0.4 * max_freq <= frequency_array[i] < 0.6 * max_freq:
+    #             pymol.cmd.color('yelloworange', 'resi %i' % (i + 1))
+    #         elif 0.6 * max_freq <= frequency_array[i] < 0.8 * max_freq:
+    #             pymol.cmd.color('tv_orange', 'resi %i' % (i + 1))
+    #         else:
+    #             pymol.cmd.color('sand', 'resi %i' % (i + 1))
+    #     else: # ptm color assigned, move on to the next residue
+    #         continue
 
     if png_sava_path:
         pymol.cmd.png(png_sava_path)
@@ -371,10 +385,11 @@ def show_cov_3d_v2(protein_id,
     print (f'image saved to {png_sava_path}')
 
     # pymol2glmol, convert pdb to pse and visualize through html
+    dump_rep_color_from_array(pdb_name,frequency_array,ptm_nonzero_idx_dict,regex_color_dict,base_path)
     # dump_rep(pdb_name,base_path)
     print(f'time used for mapping: {pdb_name, time.time() - time_start}')
     # Get out!
-    # pymol.cmd.quit()
+    pymol.cmd.quit()
 
 
 def show_3d_batch(psm_list, protein_dict, pdb_base_path, glmol_basepath=None):
@@ -475,11 +490,11 @@ if __name__=='__main__':
 
     import time
     import pandas as pd
-    """
+
     pdb_file_base_path = 'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/'
 
     peptide_tsv = 'D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_seq_240D/peptide.tsv'
-    time_point_rep = ['1080D']
+    time_point_rep = ['120D','240D','1080D']
     psm_tsv_list = ['D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_seq_'+each+'/psm.tsv' for each in time_point_rep]
     print (f'{len(psm_tsv_list)} psm files to read...')
     fasta_file = 'D:/data/Naba_deep_matrisome/uniprot-proteome_UP000000589_mouse_human_SNED1.fasta'
@@ -507,13 +522,14 @@ if __name__=='__main__':
                                                                                  regex_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,1,1]})
     # print (id_ptm_idx_dict['P68433'])
     # print (heap_list[0])
-    show_cov_3d_v2('P11087','D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-P11087-F1-model_v1.pdb',
+    show_cov_3d_v2('Q8TER0','D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q8TER0-F1-model_v1.pdb',
                    id_freq_array_dict,id_ptm_idx_dict,regex_color_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,1,1]})
     
-    """
-    pdb_path = 'C:/Users/gao lab computer/Downloads/MS_SNED1_Suppl_File_S1.pdb'
-    pdb_path2 = 'D:/data/alphafold_pdb/AF-P11276-F1-model_v1.pdb'
-    pdb_file_reader([pdb_path])
-    fasta_file = 'D:/data/Naba_deep_matrisome/uniprot-proteome_UP000000589_mouse_human_SNED1.fasta'
-    protein_dict = fasta_reader(fasta_file)
-    print (protein_dict['P11276'])
+
+    # pdb_path = 'C:/Users/gao lab computer/Downloads/MS_SNED1_Suppl_File_S1.pdb'
+    # pdb_path2 = 'D:/data/alphafold_pdb/AF-P11276-F1-model_v1.pdb'
+    # pdb_file_reader([pdb_path])
+    # fasta_file = 'D:/data/Naba_deep_matrisome/uniprot-proteome_UP000000589_mouse_human_SNED1.fasta'
+    # protein_dict = fasta_reader2(fasta_file)
+    # print (protein_dict)
+
