@@ -516,7 +516,6 @@ if __name__=='__main__':
     # show_cov_3d(psm_list,protein_dict_sub['P10853'],'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-P10853-F1-model_v1.pdb',base_path='D:/data/alphafold_pdb/')
 
 
-
     # psm_list = ['FQSSAVM[147]ALQEACEAYLVGLFEDTNLCAIHAK']
     id_freq_array_dict, id_ptm_idx_dict, heap_list = freq_ptm_index_gen_batch_v2(psm_list,protein_dict,
                                                                                  regex_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,1,1]})

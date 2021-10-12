@@ -298,7 +298,7 @@ def dump_rep_color_from_array(name, freq_array, ptm_idx_dict, regex_color_dict, 
     else:
         template = open('imported.html').read().\
             replace("###INCLUDE_PDB_FILE_HERE###", pdb_str).\
-            replace('###INCLUDE_REPRESENTATION_HERE###', ret)
+            replace('###INCLUDE_REPRESENTATION_HERE###',  )
 
     if base_path:
         f = open(base_path+name + '.html', 'w')
