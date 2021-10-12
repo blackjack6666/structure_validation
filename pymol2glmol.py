@@ -214,14 +214,11 @@ def color_getter(freq_array, ptm_idx_dict, regex_color_dict, pdb_str):
     print (cov_pos_block,non_cov_pos_block)
 
     # string concatenate
-    for each in non_cov_pos_block:
-        pos_block = str(amino_ele_pos_dict[each[0]+1][0])+'-'+str(amino_ele_pos_dict[each[-1]+1][-1])+','
-        defalt += pos_block  # append non covered regions
-    defalt = defalt.rstrip(',')
-    for each in cov_pos_block:
-        pos_block = str(amino_ele_pos_dict[each[0]+1][0])+'-'+str(amino_ele_pos_dict[each[-1]+1][-1])+','
-        covered += pos_block  # append non covered regions
-    covered = covered.rstrip(',')
+
+    defalt += ','.join([str(amino_ele_pos_dict[each[0]+1][0])+'-'+str(amino_ele_pos_dict[each[-1]+1][-1])
+                      for each in non_cov_pos_block])
+    covered += ','.join([str(amino_ele_pos_dict[each[0]+1][0])+'-'+str(amino_ele_pos_dict[each[-1]+1][-1])
+                      for each in cov_pos_block])
 
     # ptm color string concatenate
     ptm_color = ''
@@ -238,6 +235,15 @@ def color_getter(freq_array, ptm_idx_dict, regex_color_dict, pdb_str):
 
 
 def dump_rep_color_from_array(name, freq_array, ptm_idx_dict, regex_color_dict, base_path=None):
+    """
+    add color rep without Pymol API
+    :param name:
+    :param freq_array:
+    :param ptm_idx_dict:
+    :param regex_color_dict:
+    :param base_path:
+    :return:
+    """
     if 'PYMOL_GIT_MOD' in os.environ:
         import shutil
         try:
@@ -298,7 +304,7 @@ def dump_rep_color_from_array(name, freq_array, ptm_idx_dict, regex_color_dict, 
     else:
         template = open('imported.html').read().\
             replace("###INCLUDE_PDB_FILE_HERE###", pdb_str).\
-            replace('###INCLUDE_REPRESENTATION_HERE###',  )
+            replace('###INCLUDE_REPRESENTATION_HERE###',ret)
 
     if base_path:
         f = open(base_path+name + '.html', 'w')
@@ -308,6 +314,83 @@ def dump_rep_color_from_array(name, freq_array, ptm_idx_dict, regex_color_dict, 
         print ('html file to %s' % name.split('-')[1]+'.html')
     f.write(template)
     f.close()
+
+
+def dump_rep_server(name, freq_array, ptm_idx_dict, regex_color_dict, base_path, bg_color):
+    if 'PYMOL_GIT_MOD' in os.environ:
+        import shutil
+        try:
+            shutil.copytree(os.path.join(os.environ['PYMOL_GIT_MOD'], 'pymol2glmol', 'js'), os.path.join(os.getcwd(), 'js'))
+        except OSError:
+            pass
+
+    try:
+        cmd.set('pse_export_version', 1.74)
+    except:
+        pass
+
+    names = cmd.get_session()['names']
+    cmd.set('pdb_retain_ids', 1)
+
+    ret = ''
+    for obj in names:
+        if (obj == None):
+            continue
+        if (obj[2] == 0):  # not visible
+            continue
+        if (obj[1] == 0 and obj[4] == 1 and obj[0] == name):
+            ret += parseObjMol(obj)
+            print (ret)
+        if (obj[1] == 0 and obj[4] == 4):  # currently all dist objects are exported
+            ret += parseDistObj(obj)
+
+    pdb_str = cmd.get_pdbstr(name)
+    ret += '\n'+color_getter(freq_array,ptm_idx_dict,regex_color_dict,pdb_str)
+
+    cmd.turn('z', 180)
+    view = cmd.get_view()
+    cmd.turn('z', 180)
+    cx = -view[12]
+    cy = -view[13]
+    cz = -view[14]
+    cameraZ = - view[11] - 150
+    fov = float(cmd.get("field_of_view"))
+    fogStart = float(cmd.get("fog_start"))
+    slabNear = view[15] + view[11]
+    slabFar = view[16] + view[11]
+    ret += "\nview:%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f" % \
+        (cx, cy, cz, cameraZ, slabNear, slabFar, fogStart, fov)
+    for i in range(9):
+        ret += ",%.3f" % view[i]
+
+    ret += "\nbgcolor:"+bg_color
+    # bgcolor = cmd.get_setting_tuple('bg_rgb')[1]
+    #
+    # if len(bgcolor) == 1:
+    #     bgcolor = cmd.get_color_tuple(bgcolor[0])
+    #
+    # ret += "\nbgcolor:%02x%02x%02x" % (int(255 * float(bgcolor[0])), \
+    #                                    int(255 * float(bgcolor[1])), int(255 * float(bgcolor[2])))
+    # if 'PYMOL_GIT_MOD' in os.environ:
+    #     template = open(os.path.join(os.environ['PYMOL_GIT_MOD'], 'pymol2glmol', 'imported.html')).read().\
+    #         replace("###INCLUDE_PDB_FILE_HERE###", pdb_str).\
+    #         replace('###INCLUDE_REPRESENTATION_HERE###', ret)
+    # else:
+    #     template = open('imported.html').read().\
+    #         replace("###INCLUDE_PDB_FILE_HERE###", pdb_str).\
+    #         replace('###INCLUDE_REPRESENTATION_HERE###',ret)
+    #
+    # if base_path:
+    #     f = open(base_path+name + '.html', 'w')
+    #     print (f'html file to {base_path+name}.html')
+    # else:
+    #     f = open(name.split('-')[1] + '.html', 'w')
+    #     print ('html file to %s' % name.split('-')[1]+'.html')
+    # f.write(template)
+    # f.close()
+    dict = {'pbdstr': cmd.get_pdbstr(name), 'ret': ret}
+    with open(base_path + '.json', 'w') as f:
+        json.dump(dict, f)
 
 if __name__ == '__main__':
     import numpy as np

@@ -46,6 +46,21 @@ def fasta_reader2(fasta_path:str):
         gene_protein_seq_dict[gene+'_'+uniprot_id] = seq
     return gene_protein_seq_dict
 
+
+def fasta_reader3(fasta_path:str):
+
+    protein_dict = {}
+    with open(fasta_path, 'r') as f_o:
+        file_split = f_o.read().split('\n>')
+
+    for each in file_split:
+        first_line, seq = each.split('\n')[0], ''.join(each.split('\n')[1:])
+        uniprot_id = first_line.split('|')[1]
+        gene = first_line.split('GN=')[1].split(' ')[0] if 'GN=' in first_line else 'N/A'
+        des = ' '.join(first_line.split(' ')[1:]).split(' OS=')[0]
+        protein_dict[uniprot_id] = (seq,gene,des)
+    return protein_dict
+
 def peptide_counting(peptide_tsv_file):
 
     with open(peptide_tsv_file, 'r') as file_open:
@@ -529,6 +544,6 @@ if __name__=='__main__':
     # pdb_path2 = 'D:/data/alphafold_pdb/AF-P11276-F1-model_v1.pdb'
     # pdb_file_reader([pdb_path])
     # fasta_file = 'D:/data/Naba_deep_matrisome/uniprot-proteome_UP000000589_mouse_human_SNED1.fasta'
-    # protein_dict = fasta_reader2(fasta_file)
-    # print (protein_dict)
+    # protein_dict = fasta_reader3(fasta_file)
+    # print (protein_dict['Q91W20'])
 
