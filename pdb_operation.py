@@ -36,7 +36,7 @@ def residue_distance(residue_atom_xyz):
     for each_pos in residue_atom_xyz:
         distance = 0
         for each_atom in residue_atom_xyz[each_pos]:
-            print (each_atom)
+            # print (each_atom)
             distance += np.linalg.norm(np.array(each_atom)-zero_point)
         distance = distance/len(residue_atom_xyz[each_pos])
         residue_distance_dict[each_pos] = distance
@@ -45,26 +45,41 @@ def residue_distance(residue_atom_xyz):
 
 def cov_distance(freq_array,residue_dist_dict):
     """
-    calculate averge distance of covered region
+    calculate averge distance of covered region in one protein
     :param freq_array:
     :param residue_dist_dict:
     :return:
     """
+    ave_dist = 0
+    non_zero_index = np.nonzero(freq_array)[0]
+    num_nonzeros = np.count_nonzero(freq_array)
+    for i in non_zero_index:
+        ave_dist += residue_dist_dict[i+1]
 
+    if num_nonzeros == 0:
+        return 100
+    else:
+        return ave_dist/num_nonzeros
 
 if __name__ == '__main__':
-    # time_point_rep = ['120D', '240D', '1080D']
-    # psm_tsv_list = ['D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_seq_' + each + '/psm.tsv' for each in
-    #                 time_point_rep]
-    # print(f'{len(psm_tsv_list)} psm files to read...')
-    # fasta_file = 'D:/data/Naba_deep_matrisome/uniprot-proteome_UP000000589_mouse_human_SNED1.fasta'
-    # peptide_list = peptide_counting(peptide_tsv)
-    # protein_dict = fasta_reader(fasta_file)
-    # psm_list = [psm for file in psm_tsv_list for psm in modified_peptide_from_psm(file)]
+    import time
 
-    pdb_file = 'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q8TER0-F1-model_v1.pdb'
+    time_point_rep = ['1h','2h','4h','18h']
+    psm_tsv_list = ['D:/data/native_protein_digestion/' + each + '_1_native/psm.tsv' for each in time_point_rep]
+    print(f'{len(psm_tsv_list)} psm files to read...')
+    fasta_file = 'D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_only.fasta'
+    # peptide_list = peptide_counting(peptide_tsv)
+    protein_dict = fasta_reader(fasta_file)
+    psm_list = [psm for file in psm_tsv_list for psm in modified_peptide_from_psm(file)]
+
+    pdb_file = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-P61604-F1-model_v1.pdb'
     time_start = time.time()
     residue_distance = residue_distance(pdb_file_reader(pdb_file))
     print (time.time()-time_start)
     print (residue_distance)
+    freq_array = freq_ptm_index_gen_batch_v2(psm_list,protein_dict)[0]['P61604']
+
+    print (cov_distance(freq_array,residue_distance))
+
+
 

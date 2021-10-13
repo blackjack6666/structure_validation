@@ -392,17 +392,81 @@ def dump_rep_server(name, freq_array, ptm_idx_dict, regex_color_dict, base_path,
     with open(base_path + '.json', 'w') as f:
         json.dump(dict, f)
 
+
+def pdb2json(pdb_file,base_path):
+    import pymol
+    import json
+
+    pdb_name = os.path.split(pdb_file)[1]
+    print(pdb_name)
+    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    pymol.finish_launching()
+    pymol.cmd.load(pdb_file, pdb_name)
+    # pymol.cmd.disable("all")
+    # pymol.cmd.enable()
+    # pymol.cmd.hide('all')
+    # pymol.cmd.show('cartoon')
+
+    if 'PYMOL_GIT_MOD' in os.environ:
+        import shutil
+        try:
+            shutil.copytree(os.path.join(os.environ['PYMOL_GIT_MOD'], 'pymol2glmol', 'js'), os.path.join(os.getcwd(), 'js'))
+        except OSError:
+            pass
+
+    try:
+        cmd.set('pse_export_version', 1.74)
+    except:
+        pass
+
+    names = cmd.get_session()['names']
+    cmd.set('pdb_retain_ids', 1)
+
+    ret = ''
+    for obj in names:
+        if (obj == None):
+            continue
+        if (obj[2] == 0):  # not visible
+            continue
+        if (obj[1] == 0 and obj[4] == 1 and obj[0] == pdb_name):
+            ret += parseObjMol(obj)
+            # print (ret)
+        if (obj[1] == 0 and obj[4] == 4):  # currently all dist objects are exported
+            ret += parseDistObj(obj)
+
+    pdb_str = cmd.get_pdbstr(pdb_name)
+
+    view_str = ''
+    cmd.turn('z', 180)
+    view = cmd.get_view()
+    cmd.turn('z', 180)
+    cx = -view[12]
+    cy = -view[13]
+    cz = -view[14]
+    cameraZ = - view[11] - 150
+    fov = float(cmd.get("field_of_view"))
+    fogStart = float(cmd.get("fog_start"))
+    slabNear = view[15] + view[11]
+    slabFar = view[16] + view[11]
+    view_str += "\nview:%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f" % \
+           (cx, cy, cz, cameraZ, slabNear, slabFar, fogStart, fov)
+    for i in range(9):
+        view_str += ",%.3f" % view[i]
+    dict = {'pdb_str':pdb_str,'ret':ret,'view':view_str}
+
+    with open(base_path+'/'+pdb_name.split('-')[1]+'.json', 'w') as f:
+        json.dump(dict,f)
+
+
 if __name__ == '__main__':
     import numpy as np
     import re
     import time
+
+
     freq_array = np.array([0,0,0,1,1,1,1,0,0,0,0,2,2,2,1,1,1,0,0,0])
     # color_str = color_getter(freq_array)
     # print (color_str)
-    with open('D:/data/alphafold_pdb/pdb_str_testing.txt', 'r') as f_o:
-        f_read = f_o.read().split('\nTER')[0].split('\n')
-        print (f_read)
-        start = time.time()
-        regex_pairs = [(re.search('\d+',line).group(), re.search('\d+(?=\s+[+-]?\d+\.)',line).group()) for line in f_read]
-        print (time.time()-start)
-    print (regex_pairs)
+    pdb_file = 'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q8TER0-F1-model_v1.pdb'
+    time_start = time.time()
+    pdb2json(pdb_file,base_path=os.getcwd())

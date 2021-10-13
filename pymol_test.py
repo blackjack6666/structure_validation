@@ -172,6 +172,7 @@ def freq_ptm_index_gen_batch_v2(psm_list, protein_dict, regex_dict=None):
     from collections import Counter
     from collections import defaultdict
     from heapq import heappush, heappop
+    import time
 
     id_freq_array_dict = {}
     ptm_site_counting = defaultdict(int)
