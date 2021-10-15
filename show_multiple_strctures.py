@@ -104,3 +104,16 @@ def show_3d_multiple(protein_id,
     :param regex_dict:
     :return:
     """
+
+
+def pymol_imple(pdb_file_list:list):
+
+    import pymol
+    import os
+
+    for pdb_file in pdb_file_list:
+        pdb_name = os.path.split(pdb_file)[1]
+        print(pdb_name)
+        pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+        pymol.finish_launching()
+        pymol.cmd.load(pdb_file, pdb_name)
