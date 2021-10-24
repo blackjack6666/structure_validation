@@ -106,14 +106,46 @@ def show_3d_multiple(protein_id,
     """
 
 
-def pymol_imple(pdb_file_list:list):
+def pymol_imple(pdb_file:str, num_of_repeats=0):
+    """
+
+    :param pdb_file:
+    :return:
+    """
 
     import pymol
     import os
+    import shutil
 
-    for pdb_file in pdb_file_list:
-        pdb_name = os.path.split(pdb_file)[1]
-        print(pdb_name)
-        pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    base_path = os.path.dirname(pdb_file)
+    pdb_name = os.path.basename(pdb_file).split('.pdb')[0]
+
+    if not os.path.exists(base_path+'/temp'):
+        os.makedirs(base_path+'/temp')
+
+    if num_of_repeats != 0:
+        for i in range(num_of_repeats):
+            new_pdb_name = str(pdb_name)+'_'+str(i)+'.pdb'
+            shutil.copy(pdb_file, os.path.join(base_path+'/temp/',new_pdb_name))
+            # print (base_path+'/temp/',new_pdb_name)
+
+
+    pdb_files = [(base_path+'/temp/'+f,f) for f in os.listdir(base_path+'/temp/')]
+    # load pdb file in pymol api
+    for pdb_file in pdb_files:
+        pdb_name = os.path.basename(pdb_file[0])
+        print (pdb_name)
+        # pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
         pymol.finish_launching()
-        pymol.cmd.load(pdb_file, pdb_name)
+        pymol.cmd.load(pdb_file[0], pdb_name)
+
+    for i in range(len(pdb_files)):
+        pdb_oj = pdb_files[i][1]
+        if i == 0:
+            pymol.cmd.translate([0,10,0],pdb_oj)
+        else:
+            pymol.cmd.translate([0,-10,0],pdb_oj)
+
+if __name__ == '__main__':
+    pdb_file = 'D:/data/alphafold_pdb/AF-P08758-F1-model_v1.pdb'
+    pymol_imple(pdb_file,num_of_repeats=2)
