@@ -215,11 +215,11 @@ if __name__ == '__main__':
                 base_path='D:/data/alphafold_pdb/')
 
     """
-    protein_list = pd.read_excel('D:/data/native_protein_digestion/native_digest_cassette_aggrecov.xlsx', index_col=0).index
+    protein_list = pd.read_excel('D:/data/native_protein_digestion/10282021/h20_cov_dist.xlsx', index_col=0).index
     pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
-    time_points = ['1h','2h','4h','18h']
+    time_points = ['01h_h2o','02h_h2o','04h_h2o','20h_h2o']
 
-    psm_dict = {val:[psm for file in ['D:/data/native_protein_digestion/' + each + '_1_native/psm.tsv' for each in time_points[:idx+1]]
+    psm_dict = {val:[psm for file in ['D:/data/native_protein_digestion/10282021/search_result_4miss/h20/' + each + '/psm.tsv' for each in time_points[:idx+1]]
                      for psm in modified_peptide_from_psm(file)]
                 for idx, val in enumerate(time_points)}
 
@@ -232,7 +232,7 @@ if __name__ == '__main__':
                 print (val)
                 psm_list = psm_dict[val]
                 show_cov_3d(psm_list,protein_dict[each_protein],pdb_base_path+pdb_file_name,
-                            png_sava_path='D:/data/native_protein_digestion/dialysis_cassette_cov_png/'+each_protein+'_'+val+'.png')
+                            png_sava_path='D:/data/native_protein_digestion/10282021/search_result_4miss/h20/3d_cov_png/'+each_protein+'_'+val+'.png')
 
         else:
             print (f"{pdb_file_name} not existed")

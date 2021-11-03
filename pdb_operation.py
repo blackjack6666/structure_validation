@@ -33,7 +33,7 @@ def find_centroid(residue_atom_xyz):
     """
     atom_coordinates = np.array([coord for each in residue_atom_xyz for coord in residue_atom_xyz[each]])
 
-    return np.median(atom_coordinates,axis=0)
+    return np.mean(atom_coordinates,axis=0)
 
 
 def residue_distance(residue_atom_xyz):
@@ -46,12 +46,12 @@ def residue_distance(residue_atom_xyz):
     zero_point = find_centroid(residue_atom_xyz)
     residue_distance_dict = {}
     for each_pos in residue_atom_xyz:
-        distance = 0
-        for each_atom in residue_atom_xyz[each_pos]:
-            # print (each_atom)
-            distance += np.linalg.norm(np.array(each_atom)-zero_point)
-        distance = distance/len(residue_atom_xyz[each_pos])
-        residue_distance_dict[each_pos] = distance
+
+        total_dist = sum([np.linalg.norm(np.array(each_atom)-zero_point)
+                          for each_atom in residue_atom_xyz[each_pos]])
+
+        average_dist = total_dist/len(residue_atom_xyz[each_pos])
+        residue_distance_dict[each_pos] = average_dist
     return residue_distance_dict
 
 
@@ -73,6 +73,26 @@ def cov_distance(freq_array,residue_dist_dict):
             ave_dist += residue_dist_dict[i+1]
 
         return ave_dist/num_nonzeros
+
+
+def cov_dist_normalize(freq_array,residue_dist_dict):
+    """
+    calculate the normalized distance of covered region in one protein, normalized_dist = dist/max(dist)
+    :param freq_array:
+    :param residue_dist_dict:
+    :return:
+    """
+    num_nonzeros = np.count_nonzero(freq_array)
+    max_dist = max([v for v in residue_dist_dict.values()])
+    if num_nonzeros == 0:
+        return None
+    else:
+        ave_dist = 0
+        non_zero_index = np.nonzero(freq_array)[0]
+        for i in non_zero_index:
+            ave_dist += residue_dist_dict[i + 1]/max_dist*100
+
+        return ave_dist / num_nonzeros
 
 
 def pdb2_3darray(pdb_file):
@@ -129,6 +149,7 @@ if __name__ == '__main__':
     pdb_file = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-P61604-F1-model_v1.pdb'
     fasta_file = 'D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_only.fasta'
     protein_dict = fasta_reader(fasta_file)
+    print (find_centroid(pdb_file_reader(pdb_file)))
 
     """
     time_point_rep = ['1h','2h','4h','18h']
@@ -155,6 +176,7 @@ if __name__ == '__main__':
     """
 
     ### calculate covered distance and write to excel
+    """
     def protein_tsv_reader(protein_tsv_file):
         with open(protein_tsv_file, 'r') as file_open:
             next(file_open)
@@ -165,7 +187,7 @@ if __name__ == '__main__':
 
     pdb_base = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
     time_point_rep = ['01h_h2o', '02h_h2o', '04h_h2o', '20h_h2o']
-    psm_tsv_list = ['D:/data/native_protein_digestion/10282021/search_result_4miss/' + each + '/peptide.tsv' for each in time_point_rep]
+    psm_tsv_list = ['D:/data/native_protein_digestion/10282021/search_result_4miss/h20/' + each + '/peptide.tsv' for each in time_point_rep]
     print(f'{len(psm_tsv_list)} psm files to read...')
 
     import pandas as pd
@@ -182,10 +204,11 @@ if __name__ == '__main__':
                 if len(residue_dist_dict) == len(protein_dict[prot]):
 
                     freq_array = freq_array_dict[prot]
-                    cov_dist = cov_distance(freq_array,residue_dist_dict)
+                    cov_dist = cov_dist_normalize(freq_array,residue_dist_dict)
                     df.at[prot,pep_tsv.split('/')[-2]] = cov_dist
                 else:
                     print ('%s protein len between pdb and fasta is not same' % prot)
             else:
                 continue
-    df.to_excel('D:/data/native_protein_digestion/10282021/h20_cov_dist.xlsx')
+    df.to_excel('D:/data/native_protein_digestion/10282021/h20_cov_dist_normalized.xlsx')
+    """
