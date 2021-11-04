@@ -25,7 +25,7 @@ def pdb_file_reader(pdb_file):
     return residue_atom_xyz
 
 
-def find_centroid(residue_atom_xyz):
+def find_centroid(residue_atom_xyz, centroid_method='mean'):
     """
     find geometric center of protein given xyz coordinates
     :param residue_atom_xyz:
@@ -33,7 +33,10 @@ def find_centroid(residue_atom_xyz):
     """
     atom_coordinates = np.array([coord for each in residue_atom_xyz for coord in residue_atom_xyz[each]])
 
-    return np.mean(atom_coordinates,axis=0)
+    if centroid_method == 'mean':
+        return np.mean(atom_coordinates,axis=0)
+    elif centroid_method == 'median':
+        return np.median(atom_coordinates,axis=0)
 
 
 def residue_distance(residue_atom_xyz):
@@ -149,7 +152,6 @@ if __name__ == '__main__':
     pdb_file = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-P61604-F1-model_v1.pdb'
     fasta_file = 'D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_only.fasta'
     protein_dict = fasta_reader(fasta_file)
-    print (find_centroid(pdb_file_reader(pdb_file)))
 
     """
     time_point_rep = ['1h','2h','4h','18h']
@@ -176,7 +178,7 @@ if __name__ == '__main__':
     """
 
     ### calculate covered distance and write to excel
-    """
+
     def protein_tsv_reader(protein_tsv_file):
         with open(protein_tsv_file, 'r') as file_open:
             next(file_open)
@@ -189,7 +191,7 @@ if __name__ == '__main__':
     time_point_rep = ['01h_h2o', '02h_h2o', '04h_h2o', '20h_h2o']
     psm_tsv_list = ['D:/data/native_protein_digestion/10282021/search_result_4miss/h20/' + each + '/peptide.tsv' for each in time_point_rep]
     print(f'{len(psm_tsv_list)} psm files to read...')
-
+    """
     import pandas as pd
     df = pd.DataFrame(index=protein_list, columns=time_point_rep)
 
@@ -204,11 +206,74 @@ if __name__ == '__main__':
                 if len(residue_dist_dict) == len(protein_dict[prot]):
 
                     freq_array = freq_array_dict[prot]
-                    cov_dist = cov_dist_normalize(freq_array,residue_dist_dict)
+                    cov_dist = cov_distance(freq_array,residue_dist_dict)
                     df.at[prot,pep_tsv.split('/')[-2]] = cov_dist
                 else:
                     print ('%s protein len between pdb and fasta is not same' % prot)
             else:
                 continue
-    df.to_excel('D:/data/native_protein_digestion/10282021/h20_cov_dist_normalized.xlsx')
+    df.to_excel('D:/data/native_protein_digestion/10282021/h20_cov_dist_centroid_mean.xlsx')
     """
+
+    import matplotlib.pyplot as plt
+    from statistics import mean
+    import random
+    # prots_tocheck = random.sample(protein_list,100)
+    prots_tocheck = [each.split('\\')[-1].split('.png')[0] for each in glob('D:/data/native_protein_digestion/10282021/protein_centroid/*')]
+    print (prots_tocheck)
+
+    ### plot 3d and centroid
+    """
+    for prot in prots_tocheck:
+        pdb_file_path = pdb_base+'AF-'+prot+'-F1-model_v1.pdb'
+
+        if os.path.exists(pdb_file_path):
+            fig = plt.figure()
+            ax = fig.add_subplot(projection='3d')
+            print (prot)
+            residue_atom_xyz = pdb_file_reader(pdb_file_path)
+            xyz = [each for v in residue_atom_xyz.values() for each in v]
+            x,y,z = zip(*xyz)
+            ax.scatter(x,y,z,marker='o',s=0.5)
+            centroid = find_centroid(residue_atom_xyz)
+            # plot centroid
+            ax.scatter([centroid[0]],[centroid[1]],[centroid[2]], marker='o', s=8,color='r')
+            ax.text2D(0.05, 0.95, "centroid coordinates: %.2f,%.2f,%.2f" % (centroid[0] ,centroid[1],centroid[2]), transform=ax.transAxes)
+            ax.set_xlabel('X axis')
+            ax.set_ylabel('Y axis')
+            ax.set_zlabel('Z axis')
+            plt.savefig('D:/data/native_protein_digestion/10282021/protein_centroid_median/%s.png' % prot)
+    """
+    ### plot residue distance distribution
+    bot,med,top,all = [],[],[],[]
+    for prot in prots_tocheck:
+        pdb_file_path = pdb_base + 'AF-' + prot + '-F1-model_v1.pdb'
+
+        if os.path.exists(pdb_file_path):
+            distance_array = sorted([v for v in residue_distance(pdb_file_reader(pdb_file_path)).values()])
+            block = int(len(distance_array)*0.33)
+            top_33,med_33,bot_33 = distance_array[-block:],distance_array[block:-block],distance_array[:block]
+            bot.append(mean(bot_33))
+            med.append(mean(med_33))
+            top.append(mean(top_33))
+            all.append(mean(distance_array))
+            # fig, axs = plt.subplots(2,2)
+            # for row,col,data,title in zip([0,0,1,1],[0,1,0,1],
+            #                               [bot_33,med_33,top_33,distance_array],['bottom 33%','med 33%','top 33%','all']):
+            #     axs[row,col].hist(data,bins=25,alpha=0.8,color='black',density=False)
+            #     axs[row,col].set_title(title)
+            #     axs[row,col].set_xlabel('Distance')
+            #     axs[row,col].set_ylabel('frequency')
+            # fig.tight_layout()
+            # plt.savefig('D:/data/native_protein_digestion/10282021/distance_distribution_100prots/%s.png' % prot)
+            # plt.close(fig)
+
+    fig, axs = plt.subplots(2,2)
+    for row,col,data,title in zip([0,0,1,1],[0,1,0,1],
+                                  [bot,med,top,all],['bottom 33%','med 33%','top 33%','all']):
+        axs[row,col].hist(data,bins=20,alpha=0.8,color='black',density=False)
+        axs[row,col].set_title(title)
+        axs[row,col].set_xlabel('Distance')
+        axs[row,col].set_ylabel('frequency')
+    fig.suptitle('Random 100 proteins average residue distance distribution', fontsize=12)
+    plt.show()
