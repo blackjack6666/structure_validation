@@ -178,26 +178,31 @@ if __name__ == '__main__':
     """
 
     ### calculate covered distance and write to excel
+    from commons import get_unique_peptide
 
     def protein_tsv_reader(protein_tsv_file):
         with open(protein_tsv_file, 'r') as file_open:
             next(file_open)
             return [line.split("\t")[3] for line in file_open]
 
-    protein_tsv = 'D:/data/native_protein_digestion/10282021/search_result_4miss/combined_protein.tsv'
+    protein_tsv = 'D:/data/native_protein_digestion/11052021/search_result/combined_protein.tsv'
     protein_list = protein_tsv_reader(protein_tsv)
 
     pdb_base = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
-    time_point_rep = ['01h_h2o', '02h_h2o', '04h_h2o', '20h_h2o']
-    psm_tsv_list = ['D:/data/native_protein_digestion/10282021/search_result_4miss/h20/' + each + '/peptide.tsv' for each in time_point_rep]
-    print(f'{len(psm_tsv_list)} psm files to read...')
-    """
-    import pandas as pd
-    df = pd.DataFrame(index=protein_list, columns=time_point_rep)
+    base_path = 'D:/data/native_protein_digestion/11052021/search_result/'
+    folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
+    time_points = [each.split('/')[-1] for each in folders]
+    psm_path_list = [each + '/peptide.tsv' for each in folders]
+    unique_peptide_dict = get_unique_peptide(psm_path_list)
+    print(f'{len(psm_path_list)} psm files to read...')
 
-    for pep_tsv in psm_tsv_list:
+    import pandas as pd
+    df = pd.DataFrame(index=protein_list, columns=time_points)
+
+    for pep_tsv in psm_path_list:
         print (pep_tsv)
-        peptide_list = peptide_counting(pep_tsv)
+        # peptide_list = peptide_counting(pep_tsv)
+        peptide_list = unique_peptide_dict[pep_tsv.split('/')[-2]]
         freq_array_dict = freq_ptm_index_gen_batch_v2(peptide_list,protein_dict)[0]
         for prot in protein_list:
             pdb_file_path = pdb_base+'AF-'+prot+'-F1-model_v1.pdb'
@@ -212,8 +217,8 @@ if __name__ == '__main__':
                     print ('%s protein len between pdb and fasta is not same' % prot)
             else:
                 continue
-    df.to_excel('D:/data/native_protein_digestion/10282021/h20_cov_dist_centroid_mean.xlsx')
-    """
+    df.to_excel('D:/data/native_protein_digestion/11052021/cov_distance_each_unique.xlsx')
+
 
     import matplotlib.pyplot as plt
     from statistics import mean
@@ -244,7 +249,9 @@ if __name__ == '__main__':
             ax.set_zlabel('Z axis')
             plt.savefig('D:/data/native_protein_digestion/10282021/protein_centroid_median/%s.png' % prot)
     """
+
     ### plot residue distance distribution
+    """
     bot,med,top,all = [],[],[],[]
     for prot in prots_tocheck:
         pdb_file_path = pdb_base + 'AF-' + prot + '-F1-model_v1.pdb'
@@ -277,3 +284,4 @@ if __name__ == '__main__':
         axs[row,col].set_ylabel('frequency')
     fig.suptitle('Random 100 proteins average residue distance distribution', fontsize=12)
     plt.show()
+    """

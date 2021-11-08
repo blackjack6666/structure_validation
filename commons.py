@@ -124,8 +124,31 @@ def separator_pos(seq_line):
     return sep_pos_array
 
 
-if __name__ == "__main__":
+def get_unique_peptide(list_of_peptsv:list):
+    """
+    from pep tsv file only get unique peptides compared with previous ones, e.g. in 4 hour sample, filter out peptides
+    in 1h,2h and only retain peptides uniquely identified in 4h
+    :param list_of_peptide:
+    :return:
+    """
+    from pymol_test import peptide_counting
+    unique_peptide_dict = {}
+    peptide_list = []
+    for idx, val in enumerate(list_of_peptsv):
 
+        file_name = val.split("/")[-2]
+        print (file_name)
+        unique_peptide_list = [each for each in peptide_counting(val) if each not in peptide_list]
+
+        peptide_list += unique_peptide_list
+
+        unique_peptide_dict[file_name] = unique_peptide_list
+
+    return unique_peptide_dict
+
+
+if __name__ == "__main__":
+    """
     filename = 'C:/uic/lab/data/xinhao_data1/uniprot-proteome_UP000005640.fasta'
     test_filename = 'C:/uic/lab/data/TEST/test_fasta.txt'
     protein_dict = read_fasta_into_dict(filename)[0]
@@ -180,3 +203,11 @@ if __name__ == "__main__":
         #ppp.dump(uniprot_ID_list, pf)
 
     #print protein_dict, seq_line, peptide_list, sep_pos_array, zero_line_trie
+    """
+    import os
+    base_path = 'D:/data/native_protein_digestion/11052021/search_result/'
+    peptide_tsv_list = [base_path + folder+'/peptide.tsv' for folder in os.listdir(base_path)
+               if os.path.isdir(os.path.join(base_path, folder))]
+    print (peptide_tsv_list)
+    peptide_dict = get_unique_peptide(peptide_tsv_list)
+    print ((len(peptide_dict['0005min'])))
