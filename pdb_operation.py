@@ -9,7 +9,7 @@ import time
 
 def pdb_file_reader(pdb_file):
     """
-    read pdb file and map xyz coordinates of each residue
+    read pdb file and map xyz coordinates of each residue (alphafold pdbs)
     :param pdb_file:
     :return:
     """
@@ -23,6 +23,88 @@ def pdb_file_reader(pdb_file):
         residue_atom_xyz[int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group())].append([float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)])
     # print (residue_atom_xyz)
     return residue_atom_xyz
+
+
+def pdb_mutiple_reader(pdb_file_list:list):
+    """
+    read alphafold pdb files corresponding to one protein, because protein too long have multiple alphafold pdb files
+    :param pdb_file_list: a list of alphafold pdbs corresponding to one protein entry
+    :return:
+    """
+    residue_atom_xyz = defaultdict(list)
+
+    for pdb in pdb_file_list:
+        with open(pdb, 'r') as f_o:
+            f_read = f_o.read()
+            res_length = int(f_read.split('\nSEQRES')[0].split('    ')[-1].rstrip(' '))
+            file_split = f_read.split('\nATOM')[1:]
+        for line in file_split:
+            residue_atom_xyz[int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group())].append([float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)])
+
+
+def complex_pdb_reader(pdb_file):
+    """
+    read more complex pdb file, read each residue and 3 coordinates
+    :param pdb_file:
+    :return:
+    """
+    from params import aa_dict,aa_reg_str
+    residue_atom_xyz = defaultdict(list)
+
+    info_list = []
+    with open(pdb_file,'r') as f_o:
+        file_read = f_o.read()
+        file_split = file_read.split('\nATOM')[1:]
+        last_line = file_split[-1]
+        if 'HETATM' in last_line:
+            last_line = last_line.split('HETATM')[0]
+            # for line in file_split[:-1]:
+                # residue_atom_xyz[int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group())].append(
+                #     [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)])
+            for line in file_split[:-1]:
+                if re.search(aa_reg_str,line):
+                    info_list.append((re.search(aa_reg_str,line).group(0),
+                                      [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)]))
+
+            info_list.append((re.search(aa_reg_str,last_line).group(0),
+                              [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', last_line)]))
+            # residue_atom_xyz[int(re.search('\d+(?=\s+[+-]?\d+\.)', last_line).group())].append(
+            #     [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', last_line)])
+        else:
+            # for line in file_split:
+                # residue_atom_xyz[int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group())].append(
+                #     [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)])
+            for line in file_split[:-1]:
+                if re.search(aa_reg_str,line):
+                    info_list.append((re.search(aa_reg_str,line).group(0),
+                                     [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)]))
+
+    return info_list
+
+
+def plddt_retrieve(alphafold_pdb):
+    """
+    get pLDDT value from alphafold pdb file
+    :param alphafold_pdb:
+    :return:
+    """
+    with open(alphafold_pdb,'r') as f_o:
+        file_split = f_o.read().split('\nATOM')[1:]
+
+        return [float(re.search('\d+\.\d+(?=\s+[A-Z])',line).group()) for line in file_split]
+
+
+def residue_plddt_retrieve(alphafold_pdb):
+    """
+    get pLDDT value for each residue number from alphafold pdb
+    :param alphafold_pdb:
+    :return:
+    """
+    with open(alphafold_pdb,'r') as f_o:
+        file_split = f_o.read().split('\nATOM')[1:]
+
+    return {int(re.search('\d+(?=\s+[+-]?\d+\.)',line).group()):
+                          float(re.search('\d+\.\d+(?=\s+[A-Z])',line).group()) for line in file_split}
 
 
 def find_centroid(residue_atom_xyz, centroid_method='mean'):
@@ -70,12 +152,33 @@ def cov_distance(freq_array,residue_dist_dict):
     if num_nonzeros == 0:
         return None
     else:
-        ave_dist = 0
+        # ave_dist = 0
         non_zero_index = np.nonzero(freq_array)[0]
-        for i in non_zero_index:
-            ave_dist += residue_dist_dict[i+1]
+        ave_dist = sum([residue_dist_dict[i+1] for i in non_zero_index])/num_nonzeros
+        # for i in non_zero_index:
+        #     ave_dist += residue_dist_dict[i+1]
 
-        return ave_dist/num_nonzeros
+        return ave_dist
+
+
+def cov_plddt(freq_array,plddt_dict):
+    """
+    calculate average plddt of covered region in one protein
+    :param freq_array:
+    :param plddt_dict:
+    :return:
+    """
+    num_nonzeros = np.count_nonzero(freq_array)
+    if num_nonzeros == 0:
+        return None
+    else:
+        # ave_dist = 0
+        non_zero_index = np.nonzero(freq_array)[0]
+        ave_plddt = sum([plddt_dict[i + 1] for i in non_zero_index]) / num_nonzeros
+        # for i in non_zero_index:
+        #     ave_dist += residue_dist_dict[i+1]
+
+        return ave_plddt
 
 
 def cov_dist_normalize(freq_array,residue_dist_dict):
@@ -146,6 +249,51 @@ def map_aa2_3darray(freq_array, normalized_protein_coord_dict, coord_range_list)
         protein_3d[x][y][z] +=1
     return protein_3d
 
+
+def residue_density_cal(alphafold_pdb_file:str):
+    """
+    calculate the number of atoms within a certain range of one residue
+    :param alphafold_pdb_file: the alphafold pdb file
+    :return:
+    """
+    time_start = time.time()
+    residue_density_dict = {}
+    residue_atom_coord_dict = pdb_file_reader(alphafold_pdb_file)
+    # print (residue_atom_coord_dict)
+    # residue_xyz_dict = {each:np.mean(residue_atom_coord_dict[each],axis=0) for each in residue_atom_coord_dict}
+    xyz_nparray = [v for v in residue_atom_coord_dict.values()]
+
+    # xyz max minus xyz min
+    # xyz_range = np.amax(xyz_nparray,axis=0)-np.amin(xyz_nparray,axis=0)
+
+    # check 1/10 of xyz_range for each residue
+    # check_range_xyz = xyz_range/10/2
+
+    radius_power2 = 50 # trypsin main domain area in A^2
+    for each in residue_atom_coord_dict:
+
+        ref = residue_atom_coord_dict[each][-1] # only count C terminal of one residue as ref
+        # print (ref)
+
+        # find CNOS atoms within the radius range
+        bool_array = [inSphere(j,ref,radius_power2) for i in xyz_nparray for j in i]
+
+        # number of CNO atoms within a range for one residue C terminus = number of boolean true - len()
+        num_resi_inrange = np.count_nonzero(bool_array)-len(residue_atom_coord_dict[each])
+        residue_density_dict[each]=num_resi_inrange
+    print (time.time()-time_start)
+    return residue_density_dict
+
+
+def inSphere(point, ref, radius_power2):
+    diff = np.subtract(point, ref)
+    # print (diff)
+    dist = np.sum(np.power(diff, 2))
+    # print (dist)
+    # If dist is less than radius^2, return True, else return False
+    return dist < radius_power2
+
+
 if __name__ == '__main__':
     import time
 
@@ -177,7 +325,8 @@ if __name__ == '__main__':
 
     """
 
-    ### calculate covered distance and write to excel
+    ### calculate covered distance/average pLDDT and write to excel
+    """
     from commons import get_unique_peptide
 
     def protein_tsv_reader(protein_tsv_file):
@@ -185,19 +334,20 @@ if __name__ == '__main__':
             next(file_open)
             return [line.split("\t")[3] for line in file_open]
 
-    protein_tsv = 'D:/data/native_protein_digestion/11052021/search_result/combined_protein.tsv'
+    protein_tsv = 'D:/data/native_protein_digestion/11182021/search_result_XS/combined_protein.tsv'
     protein_list = protein_tsv_reader(protein_tsv)
 
     pdb_base = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
-    base_path = 'D:/data/native_protein_digestion/11052021/search_result/'
+    base_path = 'D:/data/native_protein_digestion/11182021/search_result_XS/'
     folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
     time_points = [each.split('/')[-1] for each in folders]
     psm_path_list = [each + '/peptide.tsv' for each in folders]
     unique_peptide_dict = get_unique_peptide(psm_path_list)
     print(f'{len(psm_path_list)} psm files to read...')
 
+    
     import pandas as pd
-    df = pd.DataFrame(index=protein_list, columns=time_points)
+    df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
 
     for pep_tsv in psm_path_list:
         print (pep_tsv)
@@ -207,25 +357,29 @@ if __name__ == '__main__':
         for prot in protein_list:
             pdb_file_path = pdb_base+'AF-'+prot+'-F1-model_v1.pdb'
             if os.path.exists(pdb_file_path):
-                residue_dist_dict = residue_distance(pdb_file_reader(pdb_file_path))
-                if len(residue_dist_dict) == len(protein_dict[prot]):
-
+                # residue_dist_dict = residue_distance(pdb_file_reader(pdb_file_path))
+                plddt_dict = residue_plddt_retrieve(pdb_file_path)
+                # if len(residue_dist_dict) == len(protein_dict[prot]):  # filter out those really long proteins
+                if len(plddt_dict) == len(protein_dict[prot]):
                     freq_array = freq_array_dict[prot]
-                    cov_dist = cov_distance(freq_array,residue_dist_dict)
-                    df.at[prot,pep_tsv.split('/')[-2]] = cov_dist
+                    # cov_dist = cov_distance(freq_array,residue_dist_dict)
+                    ave_cov_plddt = cov_plddt(freq_array,plddt_dict)
+                    # df.at[prot,pep_tsv.split('/')[-2]] = cov_dist
+                    df.at[prot,pep_tsv.split('/')[-2]] = ave_cov_plddt
                 else:
                     print ('%s protein len between pdb and fasta is not same' % prot)
             else:
                 continue
-    df.to_excel('D:/data/native_protein_digestion/11052021/cov_distance_each_unique.xlsx')
-
-
+    df.to_excel('D:/data/native_protein_digestion/11182021/search_result_XS/cov_plddt_XS.xlsx')
+    """
+    """
     import matplotlib.pyplot as plt
     from statistics import mean
     import random
     # prots_tocheck = random.sample(protein_list,100)
     prots_tocheck = [each.split('\\')[-1].split('.png')[0] for each in glob('D:/data/native_protein_digestion/10282021/protein_centroid/*')]
     print (prots_tocheck)
+    """
 
     ### plot 3d and centroid
     """
@@ -285,3 +439,23 @@ if __name__ == '__main__':
     fig.suptitle('Random 100 proteins average residue distance distribution', fontsize=12)
     plt.show()
     """
+
+    ### extract pLDDT from all human alphafold pdbs
+    """
+    import pickle
+    pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
+    from glob import glob
+    pdb_files = glob(pdb_path+'*.pdb')
+    count = 0
+    # total_array = []
+    pdb_plddt_dict = {}
+    for each_pdb in pdb_files:
+        count += 1
+        print(count)
+        pdb_plddt_dict[each_pdb.split('/')[-1].split('-')[1]] = plddt_retrieve(each_pdb)
+        # total_array.append(plddt_retrieve(each_pdb))
+    # pickle.dump(total_array,open('D:/data/alphafold_pdb/pLDDT_human_2d.pkl','wb'))
+    pickle.dump(pdb_plddt_dict,open('D:/data/alphafold_pdb/pLDDT_human_dict.pkl','wb'))
+    """
+    pdb_path = 'D:/data/native_protein_digestion/pdb_files/pdb5oik.ent'
+    print (residue_density_cal(pdb_file))

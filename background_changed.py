@@ -5,6 +5,7 @@ import numpy as np
 from pymol_test import peptide_counting, fasta_reader, modified_peptide_from_psm
 from glob import glob
 
+
 def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_path=None):
     """
     show 3d coverage map based on peptide list and a protein_seq
@@ -125,7 +126,7 @@ def show_multiple_color(psm_list_2d,protein_seq,pdb_file,color_list,png_save_pat
         pymol.cmd.png(png_save_path)
 
     print(f'image saved to {png_save_path}')
-    dump_rep(pdb_name,base_path)
+    # dump_rep(pdb_name,base_path)
 
     print (f'time used {time.time()-time_start}')
     pymol.cmd.quit()
@@ -187,7 +188,7 @@ def show_3d_batch(psm_list, protein_dict, pdb_base_path, png_save_path, time_poi
 if __name__ == '__main__':
     import time
     import pandas as pd
-
+    from commons import get_unique_peptide
 
     pdb_file_base_path = 'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/'
 
@@ -215,16 +216,17 @@ if __name__ == '__main__':
                 base_path='D:/data/alphafold_pdb/')
 
     """
-    protein_list = pd.read_excel('D:/data/native_protein_digestion/11052021/cov_distance.xlsx', index_col=0).index
+    protein_list = pd.read_excel('D:/data/native_protein_digestion/11182021/search_result_RN/cov_distance_each_unique_RN.xlsx', index_col=0).index
     pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
-    base_path = 'D:/data/native_protein_digestion/11052021/search_result/'
+    base_path = 'D:/data/native_protein_digestion/11182021/search_result_RN/'
     folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
     time_points = [each.split('/')[-1] for each in folders]
 
     # psm_dict = {val:[psm for file in [base_path + each + '/psm.tsv' for each in time_points[:idx+1]]
     #                  for psm in modified_peptide_from_psm(file)]
     #             for idx, val in enumerate(time_points)}
-    psm_dict = {time:modified_peptide_from_psm(base_path+time+'/psm.tsv') for time in time_points}
+    # psm_dict = {time:modified_peptide_from_psm(base_path+time+'/psm.tsv') for time in time_points}
+    psm_dict = get_unique_peptide(glob(base_path+'/*/peptide.tsv'))
 
     for each_protein in protein_list[:20]:
         pdb_file_name = 'AF-'+each_protein+'-F1-model_v1.pdb'
@@ -234,7 +236,7 @@ if __name__ == '__main__':
                 print (val)
                 psm_list = psm_dict[val]
                 show_cov_3d(psm_list,protein_dict[each_protein],pdb_base_path+pdb_file_name,
-                            png_sava_path='D:/data/native_protein_digestion/11052021/3d_cov_png/'+each_protein+'_'+val+'.png')
+                            png_sava_path='D:/data/native_protein_digestion/11182021/3d_cov_png/'+each_protein+'_'+val+'.png')
 
         else:
             print (f"{pdb_file_name} not existed")

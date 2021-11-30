@@ -135,8 +135,10 @@ def get_unique_peptide(list_of_peptsv:list):
     unique_peptide_dict = {}
     peptide_list = []
     for idx, val in enumerate(list_of_peptsv):
-
-        file_name = val.split("/")[-2]
+        if '\\' in val:
+            file_name = val.split('\\')[-2]
+        else:
+            file_name = val.split("/")[-2]
         print (file_name)
         unique_peptide_list = [each for each in peptide_counting(val) if each not in peptide_list]
 
@@ -204,10 +206,22 @@ if __name__ == "__main__":
 
     #print protein_dict, seq_line, peptide_list, sep_pos_array, zero_line_trie
     """
-    import os
-    base_path = 'D:/data/native_protein_digestion/11052021/search_result/'
-    peptide_tsv_list = [base_path + folder+'/peptide.tsv' for folder in os.listdir(base_path)
-               if os.path.isdir(os.path.join(base_path, folder))]
-    print (peptide_tsv_list)
-    peptide_dict = get_unique_peptide(peptide_tsv_list)
-    print ((len(peptide_dict['0005min'])))
+    # import os
+    # base_path = 'D:/data/native_protein_digestion/11052021/search_result/'
+    # peptide_tsv_list = [base_path + folder+'/peptide.tsv' for folder in os.listdir(base_path)
+    #            if os.path.isdir(os.path.join(base_path, folder))]
+    # print (peptide_tsv_list)
+    # peptide_dict = get_unique_peptide(peptide_tsv_list)
+    # print ((len(peptide_dict['0005min'])))
+
+    from glob import glob
+    import imageio
+    filenames = glob('D:/data/native_protein_digestion/10282021/search_result_4miss/h20/different_color_map/*unique.png')
+    print (filenames)
+    images = []
+    with imageio.get_writer('D:/data/native_protein_digestion/10282021/search_result_4miss/h20/different_color_map/Q96I99.gif',
+                            mode='I',duration=1,fps=30) as writer:
+        for file in filenames:
+            image = imageio.imread(file)
+            writer.append_data(image)
+
