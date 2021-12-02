@@ -481,7 +481,9 @@ def pdb_file_reader(pdb_file_list:list):
     from params import aa_dict,aa_reg_str
     import os
 
+    file_list_len = len(pdb_file_list)
     pdb_protein_seq_dict = {}
+    count = 1
 
     for pdb_file in pdb_file_list:
         with open(pdb_file,'r') as f_o:
@@ -496,9 +498,11 @@ def pdb_file_reader(pdb_file_list:list):
                     protein_seq += aa_dict[pos_aa_list[i][1]]
 
         # add last aa
-        protein_seq+=aa_dict[pos_aa_list[-1][1]]
+        protein_seq += aa_dict[pos_aa_list[-1][1]]
         pdb_protein_seq_dict[os.path.split(pdb_file)[-1]] = protein_seq
-        print (protein_seq)
+        # print (protein_seq)
+        print (f'{count} finished, {file_list_len-count} to go...')
+        count += 1
     return pdb_protein_seq_dict
 
 

@@ -100,7 +100,57 @@ df_new.to_excel('D:/data/native_protein_digestion/11182021/cos_sim_xs_rn_2.xlsx'
 #         df.loc[prot,'ave_plddt'] = np.mean(plddt_dict[prot])
 # df.to_excel('D:/data/native_protein_digestion/11182021/cos_sim_plddt_xs_rn.xlsx')
 
-from pdb_operation import residue_density_cal
-pdb_file = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-P61604-F1-model_v1.pdb'
-residue_density_cal(pdb_file)
+# from pdb_operation import residue_density_cal
+# pdb_file = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-P61604-F1-model_v1.pdb'
+# residue_density_cal(pdb_file)
 
+### download pdb files from pdb archive
+"""
+import wget
+f = open('D:/data/pdb/human_pdb_ids.txt','r')
+pdb_id_list = f.read().split(',')
+pdb_list_len = len(pdb_id_list)
+f.close()
+
+count = 0
+for pdb in pdb_id_list:
+    url = 'https://files.rcsb.org/download/'+pdb+'.pdb'
+    try:
+        wget.download(url, out='D:/data/pdb/pdb_human_file/')
+        print (f'{count} finished, {pdb_list_len-count} to go...')
+    except:
+        print ('error')
+        continue
+    count+=1
+"""
+
+### read sequence from pdb fasta into dict
+"""
+from pdb_operation import read_pdb_fasta
+from glob import glob
+import pickle
+pdb_seq_dict = {}
+pdb_fastas = glob('D:/data/pdb/pdb_human_sequence_file/*.fasta')
+for each in pdb_fastas:
+    pdb_id = each.split('\\')[-1].split('.fasta')[0].split('_')[-1]
+    seq = read_pdb_fasta(each)
+    pdb_seq_dict[pdb_id] = seq
+pickle.dump(pdb_seq_dict,open('D:/data/pdb/human_pdb_seq_dict.p','wb'))
+"""
+
+### map pdb entries with alphafold entries
+from pymol_test import pdb_file_reader
+alpha_fold_pdbs = glob('D:/data/alphafold_pdb/UP000005640_9606_HUMAN/*.pdb')
+file_len = len(alpha_fold_pdbs)
+
+alpha_pdb_dict = pickle.load(open('D:/data/alphafold_pdb/human_alpha_seq_dict.p','rb'))
+
+pdb_seq_dict = pickle.load(open('D:/data/pdb/human_pdb_seq_dict.p','rb'))
+seq_pdb_dict = {pdb_seq_dict[each]:each for each in pdb_seq_dict}
+seq_alpha_dict = {alpha_pdb_dict[each]:each for each in alpha_pdb_dict}
+
+f_out_put = open('D:/data/pdb/pdb_alpha_exactly_same.txt','w',newline='\n')
+for seq in seq_pdb_dict:
+    if seq in seq_alpha_dict:
+        print (seq_pdb_dict[seq],seq_alpha_dict[seq])
+        f_out_put.write(seq_pdb_dict[seq]+'\t'+seq_alpha_dict[seq]+'\n')

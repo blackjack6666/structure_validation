@@ -269,7 +269,7 @@ def residue_density_cal(alphafold_pdb_file:str):
     # check 1/10 of xyz_range for each residue
     # check_range_xyz = xyz_range/10/2
 
-    radius_power2 = 50 # trypsin main domain area in A^2
+    radius_power2 = 225 # 15A^2 trypsin radius= 1.5 nm
     for each in residue_atom_coord_dict:
 
         ref = residue_atom_coord_dict[each][-1] # only count C terminal of one residue as ref
@@ -292,6 +292,18 @@ def inSphere(point, ref, radius_power2):
     # print (dist)
     # If dist is less than radius^2, return True, else return False
     return dist < radius_power2
+
+
+def read_pdb_fasta(pdb_fasta):
+    """
+    read residue sequence from pdb fasta
+    :param pdb_fasta:
+    :return:
+    """
+    with open(pdb_fasta, 'r') as f:
+        f_split = f.read().split('>')[1:]
+        sequence = ''.join([each.split('\n')[-2] for each in f_split])
+    return sequence
 
 
 if __name__ == '__main__':
