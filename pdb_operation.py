@@ -250,13 +250,20 @@ def map_aa2_3darray(freq_array, normalized_protein_coord_dict, coord_range_list)
     return protein_3d
 
 
-def residue_density_cal(alphafold_pdb_file:str):
+def residue_density_cal(input_tuple):
     """
     calculate the number of atoms within a certain range of one residue
     :param alphafold_pdb_file: the alphafold pdb file
     :return:
     """
     time_start = time.time()
+
+    alphafold_pdb_file,protein_seq = input_tuple
+    k_density_dict, r_density_dict = {}, {}
+
+    k_index = [m.end() for m in re.finditer(r'K(?=[^P])', protein_seq)]
+    r_index = [m.end() for m in re.finditer(r'R(?=[^P])', protein_seq)]
+
     residue_density_dict = {}
     residue_atom_coord_dict = pdb_file_reader(alphafold_pdb_file)
     # print (residue_atom_coord_dict)
@@ -270,19 +277,33 @@ def residue_density_cal(alphafold_pdb_file:str):
     # check_range_xyz = xyz_range/10/2
 
     radius_power2 = 225 # 15A^2 trypsin radius= 1.5 nm
-    for each in residue_atom_coord_dict:
+    # for each in residue_atom_coord_dict:
+    #
+    #     ref = residue_atom_coord_dict[each][-1] # only count C terminal of one residue as ref
+    #     # print (ref)
+    #
+    #     # find CNOS atoms within the radius range
+    #     bool_array = [inSphere(j,ref,radius_power2) for i in xyz_nparray for j in i]
+    #
+    #     # number of CNO atoms within a range for one residue C terminus = number of boolean true - len()
+    #     # num_resi_inrange = np.count_nonzero(bool_array)-len(residue_atom_coord_dict[each])
+    #     num_resi_inrange = np.count_nonzero(bool_array)
+    #     residue_density_dict[each]=num_resi_inrange
 
-        ref = residue_atom_coord_dict[each][-1] # only count C terminal of one residue as ref
-        # print (ref)
-
-        # find CNOS atoms within the radius range
+    ### get # of density within a range of K/R
+    for k in k_index:
+        ref = residue_atom_coord_dict[k][-1]
         bool_array = [inSphere(j,ref,radius_power2) for i in xyz_nparray for j in i]
+        num_resi_inrange = np.count_nonzero(bool_array)
+        k_density_dict[k] = num_resi_inrange
+    for r in r_index:
+        ref = residue_atom_coord_dict[r][-1]
+        bool_array = [inSphere(j,ref,radius_power2) for i in xyz_nparray for j in i]
+        num_resi_inrange = np.count_nonzero(bool_array)
+        r_density_dict[r] = num_resi_inrange
 
-        # number of CNO atoms within a range for one residue C terminus = number of boolean true - len()
-        num_resi_inrange = np.count_nonzero(bool_array)-len(residue_atom_coord_dict[each])
-        residue_density_dict[each]=num_resi_inrange
-    print (time.time()-time_start)
-    return residue_density_dict
+    # print (time.time()-time_start)
+    return {alphafold_pdb_file.split('\\')[-1].split('-')[1]:(k_density_dict,r_density_dict)}
 
 
 def inSphere(point, ref, radius_power2):
@@ -308,10 +329,11 @@ def read_pdb_fasta(pdb_fasta):
 
 if __name__ == '__main__':
     import time
-
-    pdb_file = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-P61604-F1-model_v1.pdb'
-    fasta_file = 'D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_only.fasta'
+    import pickle
+    pdb_file = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-Q9H2X0-F1-model_v1.pdb'
+    fasta_file = 'D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_tr.fasta'
     protein_dict = fasta_reader(fasta_file)
+    alphafold_protein_dict = pickle.load(open('D:/data/alphafold_pdb/human_alpha_seq_dict.p','rb'))
 
     """
     time_point_rep = ['1h','2h','4h','18h']
@@ -453,11 +475,13 @@ if __name__ == '__main__':
     """
 
     ### extract pLDDT from all human alphafold pdbs
-    """
     import pickle
-    pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
     from glob import glob
-    pdb_files = glob(pdb_path+'*.pdb')
+    pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
+    pdb_files = glob(pdb_path + '*F1*.pdb')
+    input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('\\')[-1]]) for pdb in pdb_files]
+    print (len(input_list_tuples))
+    """   
     count = 0
     # total_array = []
     pdb_plddt_dict = {}
@@ -469,5 +493,17 @@ if __name__ == '__main__':
     # pickle.dump(total_array,open('D:/data/alphafold_pdb/pLDDT_human_2d.pkl','wb'))
     pickle.dump(pdb_plddt_dict,open('D:/data/alphafold_pdb/pLDDT_human_dict.pkl','wb'))
     """
-    pdb_path = 'D:/data/native_protein_digestion/pdb_files/pdb5oik.ent'
-    print (residue_density_cal(pdb_file))
+
+    ### calculate residue density for each alphafold pdb
+    import multiprocessing
+    start = time.time()
+    with multiprocessing.Pool(multiprocessing.cpu_count()-2) as pool:
+        result = pool.map(residue_density_cal,input_list_tuples,chunksize=500)
+        pool.close()
+        pool.join()
+    file_density_dict = {k:v for d in result for k, v in d.items()}
+
+    pickle.dump(file_density_dict,open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','wb'))
+    print (time.time()-start)
+
+
