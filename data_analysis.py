@@ -139,6 +139,7 @@ pickle.dump(pdb_seq_dict,open('D:/data/pdb/human_pdb_seq_dict.p','wb'))
 """
 
 ### map pdb entries with alphafold entries
+"""
 from pymol_test import pdb_file_reader
 alpha_fold_pdbs = glob('D:/data/alphafold_pdb/UP000005640_9606_HUMAN/*.pdb')
 file_len = len(alpha_fold_pdbs)
@@ -154,3 +155,25 @@ for seq in seq_pdb_dict:
     if seq in seq_alpha_dict:
         print (seq_pdb_dict[seq],seq_alpha_dict[seq])
         f_out_put.write(seq_pdb_dict[seq]+'\t'+seq_alpha_dict[seq]+'\n')
+"""
+
+### K R density analysis
+from statannot import add_stat_annotation
+from scipy.stats import mannwhitneyu
+kr_density_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
+k_density_array = [v for each in kr_density_dict for v in kr_density_dict[each][0].values()]
+r_density_array = [v for each in kr_density_dict for v in kr_density_dict[each][1].values()]
+u,p = mannwhitneyu(k_density_array,r_density_array)
+print (u,p)
+df_plot = pd.DataFrame(dict(residue=['K']*len(k_density_array)+['R']*len(r_density_array),
+                            atom_number_within_range=k_density_array+r_density_array))
+# sns.kdeplot(
+#    data=df_plot, x="atom_number_within_range", hue="residue",
+#    fill=True, common_norm=False, palette="viridis",
+#    alpha=.5, linewidth=0,
+# )
+fig, ax = plt.subplots(1,1)
+sns.violinplot(data=df_plot,x='residue',y='atom_number_within_range',palette="viridis")
+add_stat_annotation(ax,data=df_plot,x='residue',y='atom_number_within_range',
+                    box_pairs=[('K','R')],test='Mann-Whitney',text_format='star',loc='outside',verbose=2, comparisons_correction=None)
+plt.show()

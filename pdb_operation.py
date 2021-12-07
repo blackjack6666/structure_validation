@@ -479,8 +479,8 @@ if __name__ == '__main__':
     from glob import glob
     pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
     pdb_files = glob(pdb_path + '*F1*.pdb')
-    input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('\\')[-1]]) for pdb in pdb_files]
-    print (len(input_list_tuples))
+    # input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('\\')[-1]]) for pdb in pdb_files]
+    # print (len(input_list_tuples))
     """   
     count = 0
     # total_array = []
@@ -496,14 +496,17 @@ if __name__ == '__main__':
 
     ### calculate residue density for each alphafold pdb
     import multiprocessing
-    start = time.time()
-    with multiprocessing.Pool(multiprocessing.cpu_count()-2) as pool:
-        result = pool.map(residue_density_cal,input_list_tuples,chunksize=500)
-        pool.close()
-        pool.join()
-    file_density_dict = {k:v for d in result for k, v in d.items()}
+    # start = time.time()
+    # with multiprocessing.Pool(multiprocessing.cpu_count()-2) as pool:
+    #     result = pool.map(residue_density_cal,input_list_tuples,chunksize=500)
+    #     pool.close()
+    #     pool.join()
+    # file_density_dict = {k:v for d in result for k, v in d.items()}
+    #
+    # pickle.dump(file_density_dict,open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','wb'))
+    # print (time.time()-start)
 
-    pickle.dump(file_density_dict,open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','wb'))
-    print (time.time()-start)
+    k_r_density_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
+    print (k_r_density_dict['Q8IXR9'])
 
 
