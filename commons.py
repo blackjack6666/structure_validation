@@ -149,6 +149,22 @@ def get_unique_peptide(list_of_peptsv:list):
     return unique_peptide_dict
 
 
+def miss_cleavage_identify(peptide_list,regex_pattern:dict):
+    """
+    calculate the ratio of peptides that has least one missed cleavage to all peptides
+    :param peptide_list:
+    :param regex_pattern: regex pattern for mapping enzyme specificity. Default is trypsin
+    :return:
+    """
+    from re import findall
+    k_miss_sum,r_miss_sum = 0,0
+    for each in peptide_list:
+        k_miss_sum += len(findall(regex_pattern['K'],each))
+        r_miss_sum += len(findall(regex_pattern['R'],each))
+        # print (each,findall(regex_pattern['K'],each))
+    return k_miss_sum,r_miss_sum
+
+
 if __name__ == "__main__":
     """
     filename = 'C:/uic/lab/data/xinhao_data1/uniprot-proteome_UP000005640.fasta'

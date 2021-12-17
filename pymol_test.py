@@ -235,6 +235,30 @@ def freq_ptm_index_gen_batch_v2(psm_list, protein_dict, regex_dict=None):
     return id_freq_array_dict, id_ptm_idx_dict, [heappop(h) for i in range(len(h))][::-1]
 
 
+def mapping_KR_toarray(psm_list, protein_dict):
+    id_KR_array_dict = {}
+
+    # aho mapping
+    id_list, seq_list = commons.extract_UNID_and_seq(protein_dict)
+    seq_line = commons.creat_total_seq_line(seq_list, sep="|")
+    zero_line = commons.zero_line_for_seq(seq_line)
+    separtor_pos_array = commons.separator_pos(seq_line)
+
+    aho_result = automaton_matching(automaton_trie([pep for pep in psm_list]), seq_line)
+    for tp in aho_result:
+        # matched_pep = tp[2]  # without ptm site
+        # print (matched_pep,seq_line[tp[0]-1],seq_line[tp[1]])
+        zero_line[tp[0]-1]+=1  # map the start and end of peptide to the array
+        zero_line[tp[1]]+=1
+    for i in range(len(separtor_pos_array)-1):
+        zero_line_slice = zero_line[separtor_pos_array[i]+1:separtor_pos_array[i+1]]
+        percentage_cov = np.count_nonzero(zero_line_slice)/len(zero_line_slice)*100
+        # if percentage_cov != 0:
+        id_KR_array_dict[id_list[i]] = zero_line_slice
+
+    return id_KR_array_dict
+
+
 def modified_peptide_from_psm(psm_path):
     psm_list = []
     with open(psm_path, 'r') as f_open:

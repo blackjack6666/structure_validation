@@ -158,6 +158,7 @@ for seq in seq_pdb_dict:
 """
 
 ### K R density analysis
+"""
 from statannot import add_stat_annotation
 from scipy.stats import mannwhitneyu
 kr_density_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
@@ -177,3 +178,83 @@ sns.violinplot(data=df_plot,x='residue',y='atom_number_within_range',palette="vi
 add_stat_annotation(ax,data=df_plot,x='residue',y='atom_number_within_range',
                     box_pairs=[('K','R')],test='Mann-Whitney',text_format='star',loc='outside',verbose=2, comparisons_correction=None)
 plt.show()
+"""
+
+
+def map_k_r(psm_list, protein_dict):
+    """
+    map the start and end of each peptide
+    :param psm_list:
+    :param protein_dict:
+    :param regex_dict: {regex:HEX color}
+    :return:
+    """
+
+    from collections import Counter
+    from collections import defaultdict
+    from heapq import heappush, heappop
+    import time
+    import commons
+    from pymol_test import automaton_matching,automaton_trie
+
+    id_kr_mapp_dict = {}
+
+    # aho mapping
+    id_list, seq_list = commons.extract_UNID_and_seq(protein_dict)
+    seq_line = commons.creat_total_seq_line(seq_list, sep="|")
+    zero_line = commons.zero_line_for_seq(seq_line)
+    separtor_pos_array = commons.separator_pos(seq_line)
+    print ('aho mapping...')
+    aho_result = automaton_matching(automaton_trie(psm_list), seq_line)
+    print ('aho mapping done.')
+    for tp in aho_result:
+        # matched_pep = tp[2]  # without ptm site
+        zero_line[tp[0]-1]+=1
+        zero_line[tp[1]]+=1
+
+    time_start = time.time()
+    for i in range(len(separtor_pos_array)-1):
+        zero_line_slice = zero_line[separtor_pos_array[i]+1:separtor_pos_array[i+1]]
+        if np.count_nonzero(zero_line_slice) != 0:
+            id_kr_mapp_dict[id_list[i]] = zero_line_slice
+
+    return id_kr_mapp_dict
+
+
+def kr_calculate(id_kr_mapp_dict,protein_dict):
+    from collections import Counter
+    id_kr_count_dict = {}
+    k_sum, r_sum = 0,0
+    for prot in id_kr_mapp_dict:
+        kr_index = np.nonzero(id_kr_mapp_dict[prot])[0]
+        prot_seq = protein_dict[prot]
+        kr_count_dict = Counter([prot_seq[idx] for idx in kr_index])
+        k_sum += kr_count_dict['K']
+        r_sum += kr_count_dict['R']
+        id_kr_count_dict[prot] = {'K': kr_count_dict['K'],'R':kr_count_dict['R']}
+    return id_kr_count_dict,k_sum,r_sum
+
+peptsv_path = glob('D:/data/native_protein_digestion/11182021/search_result_RN/'+'/*/peptide.tsv')
+
+unique_pep_dict = get_unique_peptide(peptsv_path)
+protein_dict = fasta_reader('D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_only.fasta')
+#
+# for each in peptsv_path:
+#     file_name = each.split('\\')[-2]
+#     id_kr_mapp_dict = map_k_r(unique_pep_dict[file_name],protein_dict)
+#     print (file_name)
+#     print(kr_calculate(id_kr_mapp_dict,protein_dict)[-2:])
+
+### check inslico-digested peptides
+# inslico_human_peptides_dict = pickle.load(open('D:/data/native_protein_digestion/inslico_digest_human_fasta.p','rb'))
+# inslico_peptide_list = [pep for v in inslico_human_peptides_dict.values() for pep in v]
+# print (len(inslico_peptide_list))
+# id_kr_mapp_dict = map_k_r(inslico_peptide_list,protein_dict)
+# print(kr_calculate(id_kr_mapp_dict,protein_dict)[-2:])
+
+### missed cleavage analysis
+from commons import miss_cleavage_identify
+for each in peptsv_path:
+    file_name = each.split('\\')[-2]
+    kmiss_sum,r_miss_sum = miss_cleavage_identify(unique_pep_dict[file_name],regex_pattern={'K':r'K(?=[^P])','R':r'R(?=[^P])'})
+    print (file_name,kmiss_sum,r_miss_sum)
