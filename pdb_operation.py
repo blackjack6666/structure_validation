@@ -404,7 +404,7 @@ if __name__ == '__main__':
     print(f'{len(psm_path_list)} psm files to read...')
 
     ### calculate covered distance/average pLDDT and write to excel
-    """ 
+
     import pandas as pd
     df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
 
@@ -416,21 +416,21 @@ if __name__ == '__main__':
         for prot in protein_list:
             pdb_file_path = pdb_base+'AF-'+prot+'-F1-model_v1.pdb'
             if os.path.exists(pdb_file_path):
-                # residue_dist_dict = residue_distance(pdb_file_reader(pdb_file_path))
-                plddt_dict = residue_plddt_retrieve(pdb_file_path)
-                # if len(residue_dist_dict) == len(protein_dict[prot]):  # filter out those really long proteins
-                if len(plddt_dict) == len(protein_dict[prot]):
+                residue_dist_dict = residue_distance(pdb_file_reader(pdb_file_path))
+                # plddt_dict = residue_plddt_retrieve(pdb_file_path)
+                if len(residue_dist_dict) == len(protein_dict[prot]):  # filter out those really long proteins
+                # if len(plddt_dict) == len(protein_dict[prot]):
                     freq_array = freq_array_dict[prot]
-                    # cov_dist = cov_distance(freq_array,residue_dist_dict)
-                    ave_cov_plddt = cov_plddt(freq_array,plddt_dict)
-                    # df.at[prot,pep_tsv.split('/')[-2]] = cov_dist
-                    df.at[prot,pep_tsv.split('/')[-2]] = ave_cov_plddt
+                    cov_dist = cov_distance(freq_array,residue_dist_dict)
+                    # ave_cov_plddt = cov_plddt(freq_array,plddt_dict)
+                    df.at[prot,pep_tsv.split('/')[-2]] = cov_dist
+                    # df.at[prot,pep_tsv.split('/')[-2]] = ave_cov_plddt
                 else:
                     print ('%s protein len between pdb and fasta is not same' % prot)
             else:
                 continue
-    df.to_excel('D:/data/native_protein_digestion/11182021/search_result_XS/cov_plddt_XS.xlsx')
-    """
+    df.to_excel('D:/data/native_protein_digestion/12072021/control/cov_dist_unique.xlsx')
+
     """
     import matplotlib.pyplot as plt
     from statistics import mean
@@ -441,7 +441,7 @@ if __name__ == '__main__':
     """
 
     ### calculate covered K/R density and write to excel
-
+    """
     import pandas as pd
     from pymol_test import mapping_KR_toarray
 
@@ -470,7 +470,7 @@ if __name__ == '__main__':
             else:
                 continue
     df.to_excel('D:/data/native_protein_digestion/12072021/control/cov_KR_density.xlsx')
-
+    """
 
     ### plot 3d and centroid
     """

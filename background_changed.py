@@ -30,7 +30,7 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
     pymol.cmd.load(pdb_file, pdb_name)
     pymol.cmd.disable("all")
     pymol.cmd.enable()
-    print(pymol.cmd.get_names())
+    # print(pymol.cmd.get_names())
     # pymol.cmd.hide('all')
     pymol.cmd.show('cartoon')
     pymol.cmd.set('ray_opaque_background', 0)
@@ -221,10 +221,10 @@ if __name__ == '__main__':
 
     """
 
-    protein_list = pd.read_excel('D:/data/native_protein_digestion/11182021/search_result_XS/cov_distance_each_unique_XS.xlsx', index_col=0).index
-    protein_to_check = [(i[0],i[1].split('-')[1]) for i in pdb_to_check if i[1].split('-')[1] in protein_list]
+    # protein_list = pd.read_excel('D:/data/native_protein_digestion/11182021/search_result_XS/cov_distance_each_unique_XS.xlsx', index_col=0).index
+    # protein_to_check = [(i[0],i[1].split('-')[1]) for i in pdb_to_check if i[1].split('-')[1] in protein_list]
     pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
-    base_path = 'D:/data/native_protein_digestion/11182021/search_result_XS/'
+    base_path = 'D:/data/native_protein_digestion/12072021/control/'
     folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
     time_points = [each.split('/')[-1] for each in folders]
 
@@ -234,15 +234,19 @@ if __name__ == '__main__':
     # psm_dict = {time:modified_peptide_from_psm(base_path+time+'/psm.tsv') for time in time_points}
     psm_dict = get_unique_peptide(glob(base_path+'/*/peptide.tsv'))
 
-    for each_protein in protein_to_check:
-        pdb_file_name = 'AF-'+each_protein[1]+'-F1-model_v1.pdb'
+    control_df = pd.read_excel('D:/data/native_protein_digestion/12072021/control/spearman_corr_pval_nofill.xlsx',index_col=0)
+    protein_cand_list = control_df.loc[(control_df['spearman correlation']<0)&(control_df['p value']<0.05)].index.tolist()
+
+    # for each_protein in protein_to_check:
+    for each_protein in protein_cand_list:
+        pdb_file_name = 'AF-'+each_protein+'-F1-model_v1.pdb'
         if os.path.exists(pdb_base_path+pdb_file_name):
             print (each_protein)
             for val in time_points:
                 print (val)
                 psm_list = psm_dict[val]
-                show_cov_3d(psm_list,protein_dict[each_protein[1]],pdb_base_path+pdb_file_name,
-                            png_sava_path='D:/data/pdb/alphacoverage_to_check_1118_XS/'+each_protein[1]+'_'+val+'.png')
+                show_cov_3d(psm_list,protein_dict[each_protein],pdb_base_path+pdb_file_name,
+                            png_sava_path='D:/data/native_protein_digestion/12072021/3d_mapping_control/'+each_protein+'_'+val+'.png')
 
         else:
             print (f"{pdb_file_name} not existed")

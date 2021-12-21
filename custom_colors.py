@@ -80,7 +80,7 @@ def show_cov_3d_custom_c(peptide_list, protein_seq, pdb_file, custom_color=None,
 
 if __name__=='__main__':
     from pdb_operation import pdb_file_reader
-    from commons import get_unique_peptide
+    from commons import get_unique_peptide, dta_charge_reader
     from background_changed import show_multiple_color
     pdb_path = 'D:/data/native_protein_digestion/pdb_files/pdb6gmh_O00267.ent'
 
@@ -99,11 +99,13 @@ if __name__=='__main__':
     #     show_cov_3d_custom_c(peptide_list,protein_seq,alpha_fold_pdb,color,png_path)
 
     ### map unique peptide only to 3d
-    unique_pep_dict = get_unique_peptide(['D:/data/native_protein_digestion/10282021/search_result_4miss/h20/'+time+'/peptide.tsv' for time in time_points])
+    # unique_pep_dict = get_unique_peptide(['D:/data/native_protein_digestion/10282021/search_result_4miss/h20/'+time+'/peptide.tsv' for time in time_points])
+    peptide_2d_list = [[k for k in dta_charge_reader(each).keys()] for each in glob('D:/data/native_protein_digestion/dimethylation/*.txt')]
+    print (peptide_2d_list[1])
     # for time,color in zip(time_points,color_list):
     #     peptide_list = unique_pep_dict[time]
     #     png_path = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/different_color_map/' + protein + '_' + time + '_alphafold_unique.png'
     #     show_cov_3d_custom_c(peptide_list,protein_seq,alpha_fold_pdb,color,png_path)
-    show_multiple_color([v for v in unique_pep_dict.values()],protein_seq,alpha_fold_pdb,color_list,
-                        'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/different_color_map/'+protein+'_combined.png')
+    # show_multiple_color([v for v in unique_pep_dict.values()],protein_seq,alpha_fold_pdb,color_list,
+    #                     'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/different_color_map/'+protein+'_combined.png')
 
