@@ -72,13 +72,20 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
     # pymol.cmd.quit()
 
 
-def show_multiple_color(psm_list_2d,protein_seq,pdb_file,color_list,png_save_path=None,base_path=None):
+def show_multiple_color(psm_list_2d,
+                        protein_seq,
+                        pdb_file,
+                        color_list,
+                        ptm_color_list=None,
+                        png_save_path=None,
+                        base_path=None):
     """
     different time points data on a single 3d model
     :param psm_list_2d: 2D peptide list containing peptides identified from different time point
     :param protein_seq: target protein sequence
     :param pdb_file: pdb file absolute path
     :param color_list: 2d_RGB_list
+    :param ptm_color_list: 2d_ptm_RGB_list
     :param png_save_path:
     :return:
     """
@@ -86,14 +93,17 @@ def show_multiple_color(psm_list_2d,protein_seq,pdb_file,color_list,png_save_pat
     time_start = time.time()
 
     # load variables
-    freq_array_2d = [freq_array_and_PTM_index_generator(psm_list, protein_seq)[0] for psm_list in psm_list_2d]
-    print (len(freq_array_2d))
+    freq_array_2d = [(freq_array_and_PTM_index_generator(psm_list, protein_seq)[:2]) for psm_list in psm_list_2d]
+    freq_array_clean, ptm_loc_2d = zip(*freq_array_2d)
+    ptm_loc_2d = [ptm_loc_2d[0], [each for each in ptm_loc_2d[1] if each not in ptm_loc_2d[0]]]  # special case, delete for other use
+    print (freq_array_clean,ptm_loc_2d)
     color_dict = {str(i)+'_color':j for i,j in zip(range(len(freq_array_2d)), color_list)} # color correspond to sample
+    ptm_color_dict = {str(i)+'_ptm_color':j for i,j in zip(range(len(freq_array_2d)), ptm_color_list)}
 
     # initialize pdb file in pymol api
     pdb_name = os.path.split(pdb_file)[1]
     print(pdb_name)
-    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    # pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
     pymol.finish_launching()
     pymol.cmd.load(pdb_file, pdb_name)
     pymol.cmd.disable("all")
@@ -109,11 +119,14 @@ def show_multiple_color(psm_list_2d,protein_seq,pdb_file,color_list,png_save_pat
 
         pymol.cmd.set_color(sample,color_dict[sample])
 
+    for ptm in ptm_color_dict:
+        pymol.cmd.set_color(ptm,ptm_color_dict[ptm])
+
     # color mapped amino acids
     for i in range(len(protein_seq)):
         cov = False
         for j in range(len(freq_array_2d)):
-            if freq_array_2d[j][i] == 0:
+            if freq_array_clean[j][i] == 0:
                 continue
             else:
                 cov = True
@@ -122,6 +135,11 @@ def show_multiple_color(psm_list_2d,protein_seq,pdb_file,color_list,png_save_pat
         if cov == False:
             pymol.cmd.color('grey', 'resi %i' % (i + 1))
 
+    # color map PTMs
+    for ind, val in enumerate(ptm_loc_2d):
+        for ptm_loc in val:
+            pymol.cmd.color(str(ind)+'_ptm_color','resi %i' % (ptm_loc+1))
+
     if png_save_path:
         pymol.cmd.png(png_save_path)
 
@@ -129,7 +147,7 @@ def show_multiple_color(psm_list_2d,protein_seq,pdb_file,color_list,png_save_pat
     # dump_rep(pdb_name,base_path)
 
     print (f'time used {time.time()-time_start}')
-    pymol.cmd.quit()
+    # pymol.cmd.quit()
 
 
 def show_3d_batch(psm_list, protein_dict, pdb_base_path, png_save_path, time_point='1h',glmol_basepath=None):
@@ -221,47 +239,51 @@ if __name__ == '__main__':
 
     """
 
-    # protein_list = pd.read_excel('D:/data/native_protein_digestion/11182021/search_result_XS/cov_distance_each_unique_XS.xlsx', index_col=0).index
-    # protein_to_check = [(i[0],i[1].split('-')[1]) for i in pdb_to_check if i[1].split('-')[1] in protein_list]
+    protein_list = pd.read_excel('D:/data/native_protein_digestion/10282021/h20_cov_dist.xlsx', index_col=0).index
+    protein_to_check = [(i[0],i[1].split('-')[1]) for i in pdb_to_check if i[1].split('-')[1] in protein_list]
+
     pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
-    base_path = 'D:/data/native_protein_digestion/12072021/control/'
-    folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
-    time_points = [each.split('/')[-1] for each in folders]
+    base_path = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/'
+    folders = glob(base_path+'*h2o/')
 
-    # psm_dict = {val:[psm for file in [base_path + each + '/psm.tsv' for each in time_points[:idx+1]]
-    #                  for psm in modified_peptide_from_psm(file)]
-    #             for idx, val in enumerate(time_points)}
+    time_points = [each.split('\\')[-2] for each in folders]
+    print (time_points)
+
+    ### aggregate psm
+    psm_dict = {val:[psm for file in [base_path + each + '/psm.tsv' for each in time_points[:idx+1]]
+                     for psm in modified_peptide_from_psm(file)]
+                for idx, val in enumerate(time_points)}
     # psm_dict = {time:modified_peptide_from_psm(base_path+time+'/psm.tsv') for time in time_points}
-    psm_dict = get_unique_peptide(glob(base_path+'/*/peptide.tsv'))
+    # psm_dict = get_unique_peptide(glob(base_path+'/*/peptide.tsv'))
 
-    control_df = pd.read_excel('D:/data/native_protein_digestion/12072021/control/spearman_corr_pval_nofill.xlsx',index_col=0)
-    protein_cand_list = control_df.loc[(control_df['spearman correlation']<0)&(control_df['p value']<0.05)].index.tolist()
+    # control_df = pd.read_excel('D:/data/native_protein_digestion/12072021/control/spearman_corr_pval_nofill.xlsx',index_col=0)
+    # protein_cand_list = control_df.loc[(control_df['spearman correlation']<0)&(control_df['p value']<0.05)].index.tolist()
 
     # for each_protein in protein_to_check:
-    for each_protein in protein_cand_list:
-        pdb_file_name = 'AF-'+each_protein+'-F1-model_v1.pdb'
-        if os.path.exists(pdb_base_path+pdb_file_name):
-            print (each_protein)
-            for val in time_points:
-                print (val)
-                psm_list = psm_dict[val]
-                show_cov_3d(psm_list,protein_dict[each_protein],pdb_base_path+pdb_file_name,
-                            png_sava_path='D:/data/native_protein_digestion/12072021/3d_mapping_control/'+each_protein+'_'+val+'.png')
-
-        else:
-            print (f"{pdb_file_name} not existed")
+    # for each_protein in protein_cand_list:
+    #     pdb_file_name = 'AF-'+each_protein+'-F1-model_v1.pdb'
+    #     if os.path.exists(pdb_base_path+pdb_file_name):
+    #         print (each_protein)
+    #         for val in time_points:
+    #             print (val)
+    #             psm_list = psm_dict[val]
+    #             show_cov_3d(psm_list,protein_dict[each_protein],pdb_base_path+pdb_file_name,
+    #                         png_sava_path='D:/data/native_protein_digestion/12072021/3d_mapping_control/'+each_protein+'_'+val+'.png')
+    #
+    #     else:
+    #         print (f"{pdb_file_name} not existed")
 
     ### map peptides to pdbs
-    # for each_protein in protein_to_check:
-    #     pdb_file_name = 'D:/data/pdb/pdb_human_file/'+each_protein[0].lower()+'.pdb'
-    #
-    #     print(each_protein[0])
-    #     for val in time_points:
-    #         print(val)
-    #         psm_list = psm_dict[val]
-    #         show_cov_3d(psm_list, protein_dict[each_protein[1]], pdb_file_name,
-    #                     png_sava_path='D:/data/pdb/pdbcoverage_to_check_1118_XS/'
-    #                                   + each_protein[1] +'_'+each_protein[0] +'_' + val + '.png')
+    for each_protein in protein_to_check:
+        pdb_file_name = 'D:/data/pdb/pdb_human_file/'+each_protein[0].lower()+'.pdb'
+
+        print(each_protein[0])
+        for val in time_points:
+            print(val)
+            psm_list = psm_dict[val]
+            show_cov_3d(psm_list, protein_dict[each_protein[1]], pdb_file_name,
+                        png_sava_path='D:/data/native_protein_digestion/10282021/search_result_4miss/h20/pdb_mapping/'
+                                      + each_protein[1] +'_'+each_protein[0] +'_' + val + '.png')
 
 
 

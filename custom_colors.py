@@ -80,14 +80,14 @@ def show_cov_3d_custom_c(peptide_list, protein_seq, pdb_file, custom_color=None,
 
 if __name__=='__main__':
     from pdb_operation import pdb_file_reader
-    from commons import get_unique_peptide, dta_charge_reader
+    from commons import get_unique_peptide, dta_reader
     from background_changed import show_multiple_color
     pdb_path = 'D:/data/native_protein_digestion/pdb_files/pdb6gmh_O00267.ent'
 
     peptide_path = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/01h_h2o/peptide.tsv'
     peptide_list = peptide_counting(peptide_path)
     protein_dict = fasta_reader('D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_only.fasta')
-    protein = 'Q96I99'
+    protein = 'P04406'
     protein_seq = protein_dict[protein]
     alpha_fold_pdb = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-'+protein+'-F1-model_v1.pdb'
 
@@ -99,13 +99,23 @@ if __name__=='__main__':
     #     show_cov_3d_custom_c(peptide_list,protein_seq,alpha_fold_pdb,color,png_path)
 
     ### map unique peptide only to 3d
+    from glob import glob
+    dta_file_list = glob('D:/data/native_protein_digestion/dimethylation/DTASELECT/GAPDH*.txt')
+    file_peptide_dict = dta_reader(dta_file_list)
     # unique_pep_dict = get_unique_peptide(['D:/data/native_protein_digestion/10282021/search_result_4miss/h20/'+time+'/peptide.tsv' for time in time_points])
-    peptide_2d_list = [[k for k in dta_charge_reader(each).keys()] for each in glob('D:/data/native_protein_digestion/dimethylation/*.txt')]
-    print (peptide_2d_list[1])
+    peptide_2d_list = [[each[0] for each in file_peptide_dict[file]] for file in ['GAPDH','HGAPDH']]
+    unique_pep_2d_list = [[each.replace('K','K[28.00]') for each in peptide_2d_list[0] if each not in peptide_2d_list[1]],
+                          [each.replace('K','K[36.00]') for each in peptide_2d_list[1] if each not in peptide_2d_list[0]]]
+    # print (unique_pep_2d_list[1])
     # for time,color in zip(time_points,color_list):
     #     peptide_list = unique_pep_dict[time]
     #     png_path = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/different_color_map/' + protein + '_' + time + '_alphafold_unique.png'
     #     show_cov_3d_custom_c(peptide_list,protein_seq,alpha_fold_pdb,color,png_path)
+
     # show_multiple_color([v for v in unique_pep_dict.values()],protein_seq,alpha_fold_pdb,color_list,
     #                     'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/different_color_map/'+protein+'_combined.png')
-
+    c_list = [[0.75,0.75,0.75],[0.75,0.75,0.75]]
+    ptm_c_list = [[1.0,0.0,0.0],[0.05,0.25,0.71]]
+    gapdh_pdb = 'D:/data/native_protein_digestion/dimethylation/1znq.pdb'
+    show_multiple_color(unique_pep_2d_list,protein_seq,gapdh_pdb,c_list,ptm_color_list=ptm_c_list,
+                        png_save_path='D:/data/native_protein_digestion/dimethylation/'+protein+'_heavy_light.png')

@@ -110,7 +110,7 @@ def freq_array_and_PTM_index_generator(peptide_list, protein_seq_string,regex_pa
                     PTM_loc_list.append(start_pos+PTM_index)
     # print (PTM_sites_counting, PTM_loc_list)
 
-    return freq_array, PTM_loc_list, PTM_sites_counting
+    return freq_array, list(set(PTM_loc_list)), PTM_sites_counting
 
 
 def freq_ptm_index_gen_batch(psm_list, protein_dict, regex_pat='\w{1}\[\d+\.?\d+\]'):
