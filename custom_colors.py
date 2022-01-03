@@ -80,13 +80,14 @@ def show_cov_3d_custom_c(peptide_list, protein_seq, pdb_file, custom_color=None,
 
 if __name__=='__main__':
     from pdb_operation import pdb_file_reader
-    from commons import get_unique_peptide, dta_reader
+    from commons import get_unique_peptide, dta_reader,dta_reader2,dta_result_analyze
     from background_changed import show_multiple_color
+
     pdb_path = 'D:/data/native_protein_digestion/pdb_files/pdb6gmh_O00267.ent'
 
     peptide_path = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/01h_h2o/peptide.tsv'
     peptide_list = peptide_counting(peptide_path)
-    protein_dict = fasta_reader('D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_only.fasta')
+    protein_dict = fasta_reader('D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_tr.fasta')
     protein = 'P04406'
     protein_seq = protein_dict[protein]
     alpha_fold_pdb = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-'+protein+'-F1-model_v1.pdb'
@@ -100,12 +101,34 @@ if __name__=='__main__':
 
     ### map unique peptide only to 3d
     from glob import glob
-    dta_file_list = glob('D:/data/native_protein_digestion/dimethylation/DTASELECT/GAPDH*.txt')
+    dta_file = 'D:/data/native_protein_digestion/dimethylation/DTASELECT/030515_control_HL_PBS_chy_corr_2015_04_14_14_31470_DTASelect-filter.txt'
+    dta_file_list = glob('D:/data/native_protein_digestion/dimethylation/DTASELECT/GAPDH_heated_then_isotope_labeled_sample_2017_07_25_12_229842_DTASelect-filter.txt')
     file_peptide_dict = dta_reader(dta_file_list)
+    peptide_2d_list = [[each[0] for each in file_peptide_dict['GAPDH']],
+                       [each[0] for each in file_peptide_dict['HGAPDH']]]
+    unique_2d = [[each.replace('K','K[28]') for each in peptide_2d_list[0]],
+                 [each.replace('K','K[36]') for each in peptide_2d_list[1]]]
+
+    for each in unique_2d:
+        print ('\n'.join(each))
+    # c_list = [[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]]
+    # ptm_c_list = [[0.020, 0.980, 0.050], [0.035, 0.145, 0.859]]
+    # show_multiple_color(unique_2d, protein_seq, alpha_fold_pdb, c_list, ptm_color_list=ptm_c_list,
+    #                     png_save_path='D:/data/native_protein_digestion/dimethylation/GAPDH/' + protein + '_heavy_light.png')
+    # dta_file_list = glob('D:/data/native_protein_digestion/dimethylation/DTASELECT/1_*DTASelect-filter.txt') + \
+    #             glob('D:/data/native_protein_digestion/dimethylation/DTASELECT/2_*DTASelect-filter.txt')
+    """
+    peptide_mass_dict = dta_reader2([dta_file])
+    prot_iso_label_dict = dta_result_analyze(peptide_mass_dict)
+    for prot in prot_iso_label_dict:
+
+        alpha_pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-'+prot+'-F1-model_v1.pdb'
+        if os.path.exists(alpha_pdb_path) and prot in protein_dict:
+            prot_seq = protein_dict[prot]
     # unique_pep_dict = get_unique_peptide(['D:/data/native_protein_digestion/10282021/search_result_4miss/h20/'+time+'/peptide.tsv' for time in time_points])
-    peptide_2d_list = [[each[0] for each in file_peptide_dict[file]] for file in ['GAPDH','HGAPDH']]
-    unique_pep_2d_list = [[each.replace('K','K[28.00]') for each in peptide_2d_list[0] if each not in peptide_2d_list[1]],
-                          [each.replace('K','K[36.00]') for each in peptide_2d_list[1] if each not in peptide_2d_list[0]]]
+            peptide_2d_list = [list(prot_iso_label_dict[prot][label]) for label in ['light','heavy']]
+            unique_pep_2d_list = [[each.replace('K','K[28.00]') for each in peptide_2d_list[0]],
+                                  [each.replace('K','K[36.00]') for each in peptide_2d_list[1] if each not in peptide_2d_list[0]]]
     # print (unique_pep_2d_list[1])
     # for time,color in zip(time_points,color_list):
     #     peptide_list = unique_pep_dict[time]
@@ -114,8 +137,9 @@ if __name__=='__main__':
 
     # show_multiple_color([v for v in unique_pep_dict.values()],protein_seq,alpha_fold_pdb,color_list,
     #                     'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/different_color_map/'+protein+'_combined.png')
-    c_list = [[0.75,0.75,0.75],[0.75,0.75,0.75]]
-    ptm_c_list = [[1.0,0.0,0.0],[0.05,0.25,0.71]]
-    gapdh_pdb = 'D:/data/native_protein_digestion/dimethylation/1znq.pdb'
-    show_multiple_color(unique_pep_2d_list,protein_seq,gapdh_pdb,c_list,ptm_color_list=ptm_c_list,
-                        png_save_path='D:/data/native_protein_digestion/dimethylation/'+protein+'_heavy_light.png')
+            c_list = [[1.0,0.0,0.0],[1.0,0.0,0.0]]
+            ptm_c_list = [[0.835,0.949,0.941],[0.153,0.541,0.506]]
+            gapdh_pdb = 'D:/data/native_protein_digestion/dimethylation/1znq.pdb'
+            show_multiple_color(unique_pep_2d_list,prot_seq,alpha_pdb_path,c_list,ptm_color_list=ptm_c_list,
+                                png_save_path='D:/data/native_protein_digestion/dimethylation/pngs/'+prot+'_heavy_light.png')
+    """

@@ -6,7 +6,22 @@ import multiprocessing as mp
 import time
 
 import re
+aa_mass_table = {'A': 71.037114, 'R': 156.101111, 'N': 114.042927, 'D': 115.026943,
+                 'C': 103.009185, 'E': 129.042593, 'Q': 128.058578, 'G': 57.021464,
+                 'H': 137.058912, 'I': 113.084064, 'L': 113.084064, 'K': 128.094963,
+                 'M': 131.040485, 'F': 147.068414, 'P': 97.052764, 'S': 87.032028,
+                 'T': 101.047679, 'U': 150.95363, 'W': 186.079313, 'Y': 163.06332,
+                 'V': 99.068414, 'B': 114.53494, 'Z': 128.55059, 'X':110,
+                }
 
+
+def protein_mass(protein_seq):
+    mass = 0
+    for aa in protein_seq:
+        mass += aa_mass_table[aa]
+    mass += 18.01528 # add the weight of water
+
+    return mass
 
 def extract_UNID_and_seq(protein_dict):
     UNID_list = [key for key in protein_dict.keys()]
@@ -182,14 +197,76 @@ def dta_reader(dta_file_list):
                     protein_id = line_split[0].split('|')[1]
                 elif len(line_split) == 15 and Reverse_start == 0:
                     file = line_split[1].split('_')[0]
-                    if file == 'GAPDH' or 'HGAPDH':
+                    if file == 'GAPDH' or 'HGAPDH' or 'MGAPDH':
                         # print (line_split[-1])
                         pep_seq = line_split[-1].split('.')[1]
                         pep_mass = line_split[5]
                         if 'K' in pep_seq:
                             peptide_dict[file].append((pep_seq,pep_mass))
+                        # elif len(re.findall('K',pep_seq))==2:
+                        #     print(file,pep_seq,pep_mass)
     return peptide_dict
 
+
+def dta_reader2(dta_file_list):
+    peptide_mass_dict = defaultdict(list)
+    for dta_file in dta_file_list:
+        protein_id_list = []
+        with open(dta_file, 'r') as file_open:
+            for i in range(43):
+                next(file_open)
+            Reverse_start = 0
+            pep_seq_switch = 0
+            for line in file_open:
+                line_split = line.split('\t')
+
+                if line.startswith('Reverse_') or line.startswith('Rev_'):
+                    Reverse_start = 1
+                elif (line.startswith('sp') or line.startswith('tr')) and pep_seq_switch==0:
+                    Reverse_start = 0
+                    protein_id = line_split[0].split('|')[1]
+                    # print (protein_id)
+                    protein_id_list.append(protein_id)
+                elif (line.startswith('sp') or line.startswith('tr')) and pep_seq_switch==1:
+                    protein_id_list = []
+                    Reverse_start = 0
+                    protein_id = line_split[0].split('|')[1]
+                    protein_id_list.append(protein_id)
+                    pep_seq_switch = 0
+                elif len(line_split) == 15 and Reverse_start == 0:  #  sometimes len is 14
+                    pep_seq_switch = 1
+                    pep_seq = line_split[-1].split('.')[1]
+                    pep_mass = line_split[5]
+                    file_name = line_split[1].split('_')[0]
+                    for protein_id in protein_id_list:
+                        peptide_mass_dict[protein_id].append((pep_seq,pep_mass,file_name))
+    return peptide_mass_dict
+
+
+def dta_result_analyze(peptide_mass_dict):
+    """
+    distinguish between light and heavy labeled peptide
+    :param peptide_mass_dict: returned from dta_reader_2
+    :return:
+    """
+    from collections import Counter
+    prot_iso_lab_dict = {}
+    for prt in peptide_mass_dict:
+        isolabel_dict = defaultdict(set)
+        pep_mass_lst = peptide_mass_dict[prt]
+        for tp in pep_mass_lst:
+            peptide_seq, observed_mass,file_name = tp
+
+            # therotical_mass = protein_mass(peptide_seq)
+            # num_of_k = Counter(peptide_seq)['K']
+            # mass_diff = ((observed_mass-therotical_mass)-36)/num_of_k
+
+            if file_name[0]=='H':  # probably means heavy
+                isolabel_dict['heavy'].add(peptide_seq)
+            else:
+                isolabel_dict['light'].add(peptide_seq)
+        prot_iso_lab_dict[prt] = isolabel_dict
+    return prot_iso_lab_dict
 if __name__ == "__main__":
     """
     filename = 'C:/uic/lab/data/xinhao_data1/uniprot-proteome_UP000005640.fasta'
@@ -266,5 +343,11 @@ if __name__ == "__main__":
     #         image = imageio.imread(file)
     #         writer.append_data(image)
 
-    dta_file = 'D:/data/native_protein_digestion/dimethylation/DTASELECT/GAPDH_isotope_labeled_1_6_sample_2017_07_25_11_229839_DTASelect-filter.txt'
-    print (dta_reader(dta_file))
+    dta_file = 'D:/data/native_protein_digestion/dimethylation/DTASELECT/030515_control_HL_PBS_chy_corr_2015_04_14_14_31470_DTASelect-filter.txt'
+    file_list = glob.glob('D:/data/native_protein_digestion/dimethylation/DTASELECT/1_*DTASelect-filter.txt')+\
+                glob.glob('D:/data/native_protein_digestion/dimethylation/DTASELECT/2_*DTASelect-filter.txt')
+
+    peptide_mass_dict = dta_reader2([dta_file])
+
+    prot_iso_label_dict = dta_result_analyze(peptide_mass_dict)['P84077']
+    print (prot_iso_label_dict)

@@ -103,11 +103,16 @@ def freq_array_and_PTM_index_generator(peptide_list, protein_seq_string,regex_pa
             freq_array[start_pos:end_pos + 1] += 1
             if PTM:  # the peptide has ptm site
                 for ele in PTM:
-
-                    PTM_index = pep.find(ele)
+                    # print (pep,ele)
+                    ### count multiple ptms in a peptide seq
+                    num_of_mod = len(re.findall(ele.replace('[','\[').replace(']','\]').replace('.','\.'),pep))
+                    PTM_index = [m.start() for m in re.finditer(ele.replace('[','\[').replace(']','\]').replace('.','\.'),pep)]
+                    PTM_index_clean = [ind-num*(len(ele)-1) for ind, num in zip(PTM_index,range(num_of_mod))]
+                    # print (PTM_index_clean)
                    #PTM_site = pep[PTM_index] # single amino acid
-                    PTM_sites_counting[ele] += 1
-                    PTM_loc_list.append(start_pos+PTM_index)
+                    for indx in PTM_index_clean:
+                        PTM_sites_counting[ele] += 1
+                        PTM_loc_list.append(start_pos+indx)
     # print (PTM_sites_counting, PTM_loc_list)
 
     return freq_array, list(set(PTM_loc_list)), PTM_sites_counting
@@ -202,15 +207,32 @@ def freq_ptm_index_gen_batch_v2(psm_list, protein_dict, regex_dict=None):
                 for ptm in regex_dict:
                     # only keep one ptm in psm if there are multiple for correct index finding
                     new_psm = re.sub('(?!'+ptm[1:]+')\[\d+\.?\d+\]','',psm)
-
-                    ptm_mod = re.findall(ptm, new_psm)
+                    print (new_psm)
+                    ptm_mod = set(re.findall(ptm, new_psm))
                     print(ptm_mod)
                     if ptm_mod:
+                    #     for ele in ptm_mod:
+                    #         print (new_psm)
+                    #         ptm_idx = new_psm.find(ele)
+                    #         print(matched_pep, tp[0], ele, ptm_idx)
+                    #         ptm_index_line_dict[ptm][tp[0] + ptm_idx] += 1
+
                         for ele in ptm_mod:
-                            print (new_psm)
-                            ptm_idx = new_psm.find(ele)
-                            print(matched_pep, tp[0], ele, ptm_idx)
-                            ptm_index_line_dict[ptm][tp[0] + ptm_idx] += 1
+                            # print (pep,ele)
+                            ### count multiple ptms in a peptide seq
+                            num_of_mod = len(
+                                re.findall(ele.replace('[', '\[').replace(']', '\]').replace('.', '\.'), new_psm))
+                            print (num_of_mod)
+                            PTM_index = [m.start() for m in
+                                         re.finditer(ele.replace('[', '\[').replace(']', '\]').replace('.', '\.'), new_psm)]
+                            PTM_index_clean = [ind - num * (len(ele) - 1) for ind, num in
+                                               zip(PTM_index, range(num_of_mod))]
+                            print (PTM_index_clean)
+                            # print (PTM_index_clean)
+                            # PTM_site = pep[PTM_index] # single amino acid
+                            for indx in PTM_index_clean:
+
+                                ptm_index_line_dict[ptm][tp[0] + indx] += 1
 
     time_start = time.time()
     for i in range(len(separtor_pos_array)-1):
@@ -534,6 +556,7 @@ if __name__=='__main__':
 
     import time
     import pandas as pd
+    from commons import dta_reader
 
     pdb_file_base_path = 'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/'
 
@@ -544,7 +567,7 @@ if __name__=='__main__':
     fasta_file = 'D:/data/Naba_deep_matrisome/uniprot-proteome_UP000000589_mouse_human_SNED1.fasta'
     peptide_list = peptide_counting(peptide_tsv)
     protein_dict = fasta_reader(fasta_file)
-    psm_list = [psm for file in psm_tsv_list for psm in modified_peptide_from_psm(file)]
+    # psm_list = [psm for file in psm_tsv_list for psm in modified_peptide_from_psm(file)]
 
     # protein_list = pd.read_excel('D:/data/Naba_deep_matrisome/07232021_secondsearch/7_24_ecm_aggregated_D_F_average.xlsx',index_col=0).index.tolist()
     protein_list = ['Q01149','P10853']
@@ -559,14 +582,20 @@ if __name__=='__main__':
 
     # show_cov_3d(psm_list,protein_dict_sub['P10853'],'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-P10853-F1-model_v1.pdb',base_path='D:/data/alphafold_pdb/')
 
+    dta_file_list = glob('D:/data/native_protein_digestion/dimethylation/DTASELECT/GAPDH_heated_then_isotope_labeled_sample_2017_07_25_12_229842_DTASelect-filter.txt')
+    file_peptide_dict = dta_reader(dta_file_list)
+    peptide_2d_list = [[each[0] for each in file_peptide_dict['GAPDH']],
+                       [each[0] for each in file_peptide_dict['HGAPDH']]]
+    unique_1d = [each.replace('K','K[28]') for each in peptide_2d_list[0]]+\
+                [each.replace('K','K[36]') for each in peptide_2d_list[1]]
+    protein_dict_human = fasta_reader('D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_tr.fasta')
+    id_freq_array_dict, id_ptm_idx_dict, heap_list = freq_ptm_index_gen_batch_v2(unique_1d,protein_dict_human,
+                                                                                 regex_dict={'K\[28\]':[5, 250, 13], 'K\[36\]':[5, 25, 242]})
 
-    # psm_list = ['FQSSAVM[147]ALQEACEAYLVGLFEDTNLCAIHAK']
-    id_freq_array_dict, id_ptm_idx_dict, heap_list = freq_ptm_index_gen_batch_v2(psm_list,protein_dict,
-                                                                                 regex_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,1,1]})
-    # print (id_ptm_idx_dict['P68433'])
+    # print (id_ptm_idx_dict['P04406'])
     # print (heap_list[0])
-    show_cov_3d_v2('Q8TER0','D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q8TER0-F1-model_v1.pdb',
-                   id_freq_array_dict,id_ptm_idx_dict,regex_color_dict={'P\[113\]':[0,255,255], 'K\[144\]':[255,1,1]})
+    show_cov_3d_v2('P04406','D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-P04406-F1-model_v1.pdb',
+                   id_freq_array_dict,id_ptm_idx_dict,regex_color_dict={'K\[28\]':[5, 250, 13], 'K\[36\]':[5, 25, 242]})
     
 
     # pdb_path = 'C:/Users/gao lab computer/Downloads/MS_SNED1_Suppl_File_S1.pdb'
