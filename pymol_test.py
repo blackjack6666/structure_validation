@@ -220,14 +220,11 @@ def freq_ptm_index_gen_batch_v2(psm_list, protein_dict, regex_dict=None):
                         for ele in ptm_mod:
                             # print (pep,ele)
                             ### count multiple ptms in a peptide seq
-                            num_of_mod = len(
-                                re.findall(ele.replace('[', '\[').replace(']', '\]').replace('.', '\.'), new_psm))
-                            print (num_of_mod)
-                            PTM_index = [m.start() for m in
-                                         re.finditer(ele.replace('[', '\[').replace(']', '\]').replace('.', '\.'), new_psm)]
-                            PTM_index_clean = [ind - num * (len(ele) - 1) for ind, num in
-                                               zip(PTM_index, range(num_of_mod))]
-                            print (PTM_index_clean)
+                            num_of_mod = len(re.findall(ele.replace('[', '\[').replace(']', '\]').replace('.', '\.'), new_psm))
+                            # print (num_of_mod)
+                            PTM_index = [m.start() for m in re.finditer(ele.replace('[', '\[').replace(']', '\]').replace('.', '\.'), new_psm)]
+                            PTM_index_clean = [ind - num * (len(ele) - 1) for ind, num in zip(PTM_index, range(num_of_mod))]
+                            # print (PTM_index_clean)
                             # print (PTM_index_clean)
                             # PTM_site = pep[PTM_index] # single amino acid
                             for indx in PTM_index_clean:

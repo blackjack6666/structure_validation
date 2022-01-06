@@ -453,9 +453,10 @@ def pdb2json(pdb_file,base_path):
     for i in range(9):
         view_str += ",%.3f" % view[i]
     dict = {'pdb_str':pdb_str,'ret':ret,'view':view_str}
+    return dict
 
-    with open(base_path+'/'+pdb_name.split('-')[1]+'.json', 'w') as f:
-        json.dump(dict,f)
+    # with open(base_path+'/'+pdb_name.split('-')[1]+'.json', 'w') as f:
+    #     json.dump(dict,f)
 
 
 if __name__ == '__main__':
@@ -469,4 +470,5 @@ if __name__ == '__main__':
     # print (color_str)
     pdb_file = 'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/AF-Q8TER0-F1-model_v1.pdb'
     time_start = time.time()
-    pdb2json(pdb_file,base_path=os.getcwd())
+    info_dict = pdb2json(pdb_file,base_path=os.getcwd())
+    print (info_dict['view'])

@@ -19,7 +19,7 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
     import time
     time_start = time.time()
     freq_array, ptm_loc_list, PTM_sites_counting = freq_array_and_PTM_index_generator(peptide_list,protein_seq)
-
+    # print (freq_array)
     print (ptm_loc_list)
     print (f'ptm sites counting: {PTM_sites_counting}')
     # open pdb file with pymol
@@ -35,6 +35,7 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
     pymol.cmd.show('cartoon')
     pymol.cmd.set('ray_opaque_background', 0)
     pymol.cmd.bg_color('white')
+    pymol.cmd.remove('solvent') # optional
 
     # highlight covered region
     max_freq = np.max(freq_array)
@@ -44,6 +45,7 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
             pymol.cmd.color('grey', 'resi %i' % (i + 1))
 
         else:
+            print(i)
             pymol.cmd.color('red', 'resi %i' % (i + 1))
     # stick cysteines
 
@@ -248,50 +250,51 @@ if __name__ == '__main__':
     protein_to_check = [(i[0],i[1].split('-')[1]) for i in pdb_to_check if i[1].split('-')[1] in protein_list]
 
     pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
-    base_path = 'D:/data/native_protein_digestion/12072021/control/'
-    folders = glob(base_path+'/*/')
+    base_path = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20'
+    folders = glob(base_path+'/*_h2o/')
 
     time_points = [each.split('\\')[-2] for each in folders]
     print (time_points)
 
     ### aggregate psm
-    # psm_dict = {val:[psm for file in [base_path + each + '/psm.tsv' for each in time_points[:idx+1]]
-    #                  for psm in modified_peptide_from_psm(file)]
-    #             for idx, val in enumerate(time_points)}
+    psm_dict = {val:[psm for file in [base_path +'/'+ each + '/psm.tsv' for each in time_points[:idx+1]]
+                     for psm in modified_peptide_from_psm(file)]
+                for idx, val in enumerate(time_points)}
     # psm_dict = {time:modified_peptide_from_psm(base_path+time+'/psm.tsv') for time in time_points}
-    psm_dict = get_unique_peptide(glob(base_path+'/*/peptide.tsv'))
+    ### unique psm
+    # psm_dict = get_unique_peptide(glob(base_path+'/*/peptide.tsv'))
 
     # control_df = pd.read_excel('D:/data/native_protein_digestion/12072021/control/spearman_corr_pval_nofill.xlsx',index_col=0)
     # protein_cand_list = control_df.loc[(control_df['spearman correlation']<0)&(control_df['p value']<0.05)].index.tolist()
 
     # for each_protein in protein_to_check:
-    for each_protein in ['P10253', 'P26583', 'P27694', 'P28074', 'P30626', 'P43490', 'P78344', 'Q01813', 'Q16204', 'Q96M27', 'Q9GZZ1', 'Q9H1E3', 'Q9NPF4', 'Q9Y285', 'P41091', 'P60660', 'Q6L8Q7']:
-        pdb_file_name = 'AF-'+each_protein+'-F1-model_v1.pdb'
-        if os.path.exists(pdb_base_path+pdb_file_name):
-            print (each_protein)
-            for val in time_points:
-                print (val)
-                psm_list = psm_dict[val]
-                show_cov_3d(psm_list,protein_dict[each_protein],pdb_base_path+pdb_file_name,
-                            png_sava_path='D:/data/native_protein_digestion/12072021/pngs_candidates/'+each_protein+'_'+val+'.png')
-
-        else:
-            print (f"{pdb_file_name} not existed")
+    # for each_protein in ['P10253', 'P26583', 'P27694', 'P28074', 'P30626', 'P43490', 'P78344', 'Q01813', 'Q16204', 'Q96M27', 'Q9GZZ1', 'Q9H1E3', 'Q9NPF4', 'Q9Y285', 'P41091', 'P60660', 'Q6L8Q7']:
+    #     pdb_file_name = 'AF-'+each_protein+'-F1-model_v1.pdb'
+    #     if os.path.exists(pdb_base_path+pdb_file_name):
+    #         print (each_protein)
+    #         for val in time_points:
+    #             print (val)
+    #             psm_list = psm_dict[val]
+    #             show_cov_3d(psm_list,protein_dict[each_protein],pdb_base_path+pdb_file_name,
+    #                         png_sava_path='D:/data/native_protein_digestion/12072021/pngs_candidates/'+each_protein+'_'+val+'.png')
+    #
+    #     else:
+    #         print (f"{pdb_file_name} not existed")
 
     ### map peptides to pdbs
     # for each_protein in protein_to_check:
-    #     pdb_file_name = 'D:/data/pdb/pdb_human_file/'+each_protein[0].lower()+'.pdb'
+    # for each_protein in ['P13667']:
+    #     pdb_file_name = 'D:/data/pdb/robetta_models_PDIA4.pdb'
     #
-    #     print(each_protein[0])
+    #
     #     for val in time_points:
     #         print(val)
     #         psm_list = psm_dict[val]
-    #         show_cov_3d(psm_list, protein_dict[each_protein[1]], pdb_file_name,
-    #                     png_sava_path='D:/data/native_protein_digestion/10282021/search_result_4miss/h20/pdb_mapping/'
-    #                                   + each_protein[1] +'_'+each_protein[0] +'_' + val + '.png')
+    #         show_cov_3d(psm_list, protein_dict[each_protein], pdb_file_name,
+    #                     png_sava_path='D:/data/native_protein_digestion/10282021/search_result_4miss/h20/rossetta_mapping/'
+    #                                   + each_protein +'_rossetta_'+ val + '.png')
 
-
-
+    show_cov_3d(psm_dict['01h_h2o'], protein_dict['P30086'], 'D:/data/pdb/robetta_models_PEBP1_P30086.pdb')
 
     # for i in ['1h','2h','4h','18h']:
     #     show_cov_3d(psm_dict[i],protein_dict['P61604'],pdb_base_path+'AF-P61604-F1-model_v1.pdb',
