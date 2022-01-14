@@ -45,7 +45,7 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
             pymol.cmd.color('grey', 'resi %i' % (i + 1))
 
         else:
-            print(i)
+            # print(i)
             pymol.cmd.color('red', 'resi %i' % (i + 1))
     # stick cysteines
 

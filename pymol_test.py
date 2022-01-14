@@ -9,6 +9,8 @@ import ahocorasick
 import commons
 
 
+aa_str = ''.join([aa for aa in commons.aa_mass_table])
+
 def automaton_trie(peptide_list):
     A = ahocorasick.Automaton()
     for idx, peptide in enumerate(peptide_list):
@@ -205,8 +207,14 @@ def freq_ptm_index_gen_batch_v2(psm_list, protein_dict, regex_dict=None):
         if ptm_index_line_dict:  # if ptm enabled
             for psm in peptide_psm_dict[matched_pep]:
                 for ptm in regex_dict:
-                    # only keep one ptm in psm if there are multiple for correct index finding
-                    new_psm = re.sub('(?!'+ptm[1:]+')\[\d+\.?\d+\]','',psm)
+                    print (ptm)
+
+                    # only keep one kind ptm in psm if there are multiple for correct index finding
+                    # new_psm = re.sub('(?!'+ptm[1:]+')\[\d+\.?\d+\]','',psm)
+                    # new_psm = re.sub('(?<!'+ptm[0]+')'+ptm[1:],'',psm)  # negative lookbehind
+                    # new_psm = re.sub('['+aa_str.replace(ptm[0],'')+']\[\d+\.?\d+\]',my_replace,psm)
+
+                    new_psm = re.sub('\[\d+\.?\d+\]','', psm.replace(ptm.replace('\\',''),'*')).replace('*',ptm.replace('\\',''))
                     print (new_psm)
                     ptm_mod = set(re.findall(ptm, new_psm))
                     print(ptm_mod)
@@ -246,7 +254,7 @@ def freq_ptm_index_gen_batch_v2(psm_list, protein_dict, regex_dict=None):
         if ptm_index_line_dict:
             id_ptm_idx_dict[id_list[i]] = {ptm: np.array(
                 np.nonzero(ptm_index_line_dict[ptm][separtor_pos_array[i] + 1:separtor_pos_array[i + 1]])[
-                    0] + 1).tolist()
+                    0]).tolist()
                                            for ptm in ptm_index_line_dict}
     print (time.time()-time_start)
 
@@ -586,14 +594,48 @@ if __name__=='__main__':
     unique_1d = [each.replace('K','K[28]') for each in peptide_2d_list[0]]+\
                 [each.replace('K','K[36]') for each in peptide_2d_list[1]]
     protein_dict_human = fasta_reader('D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_tr.fasta')
-    id_freq_array_dict, id_ptm_idx_dict, heap_list = freq_ptm_index_gen_batch_v2(unique_1d,protein_dict_human,
-                                                                                 regex_dict={'K\[28\]':[5, 250, 13], 'K\[36\]':[5, 25, 242]})
 
+
+    ### SNED1 different color on the same model
+    df = pd.read_excel('D:/data/Naba_deep_matrisome/07232021_secondsearch/7_24_summary_D_F_squential_standard.xlsx',
+                       index_col=0)
+    timepoints = ['30', '120', '240', '1080']
+    time_peptides_dict = {}
+    for each_time in timepoints:
+        peptide_list = df.loc['Q8TER0', 'SNED1_seq_' + each_time + 'D' + '_total peptides identified'].split(', ') + \
+                       df.loc['Q8TER0', 'SNED1_seq_' + each_time + 'F' + '_total peptides identified'].split(', ')
+        time_peptides_dict[each_time] = peptide_list
+    ## get unique peptides from each time point
+    total_peptide_list = []
+    peptide_dict_unique = {}
+    for each in timepoints:
+        pep_list = [pep for pep in time_peptides_dict[each] if pep not in total_peptide_list]
+        total_peptide_list += pep_list
+        peptide_dict_unique[each] = set(pep_list)
+
+    new_sned_pep_list = []
+    for time in peptide_dict_unique:
+        # print(time)
+        for peptide in peptide_dict_unique[time]:
+            # new_peptide = ''.join([aa+'['+time+']' for aa in peptide])
+            peplist = [aa + '[' + time + ']' for aa in peptide]
+            # peplist.insert(0,'(')
+            # peplist.append(')')
+            # peplist.append('['+time+']')
+            # print(''.join(peplist))
+            new_sned_pep_list.append(''.join(peplist))
+    print (new_sned_pep_list)
+
+
+    time_ptm = time.time()
+    id_freq_array_dict, id_ptm_idx_dict, heap_list = freq_ptm_index_gen_batch_v2(new_sned_pep_list,protein_dict,
+                                                                                 regex_dict=regex_dict)
+    print (f'time used for ptm mapping: {time.time()-time_ptm}')
     # print (id_ptm_idx_dict['P04406'])
     # print (heap_list[0])
-    show_cov_3d_v2('P04406','D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-P04406-F1-model_v1.pdb',
-                   id_freq_array_dict,id_ptm_idx_dict,regex_color_dict={'K\[28\]':[5, 250, 13], 'K\[36\]':[5, 25, 242]})
-    
+    show_cov_3d_v2('Q8TER0','D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-Q8TER0-F1-model_v1.pdb',
+                   id_freq_array_dict,id_ptm_idx_dict,regex_color_dict=regex_dict)
+
 
     # pdb_path = 'C:/Users/gao lab computer/Downloads/MS_SNED1_Suppl_File_S1.pdb'
     # pdb_path2 = 'D:/data/alphafold_pdb/AF-P11276-F1-model_v1.pdb'

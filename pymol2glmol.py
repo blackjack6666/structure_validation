@@ -267,7 +267,7 @@ def dump_rep_color_from_array(name, freq_array, ptm_idx_dict, regex_color_dict, 
             continue
         if (obj[1] == 0 and obj[4] == 1 and obj[0] == name):
             ret += parseObjMol(obj)
-            print (ret)
+            # print (ret)
         if (obj[1] == 0 and obj[4] == 4):  # currently all dist objects are exported
             ret += parseDistObj(obj)
 

@@ -1,3 +1,7 @@
+"""
+some analysis from PDB, e.g. Alphafold PLDDT,
+"""
+
 import pickle
 import seaborn as sns
 import matplotlib.pyplot as plt
