@@ -15,9 +15,9 @@ def pse_gen(protein_id,
             regex_color_dict=None
             ):
     """
-    .pse file is openable by Pymol
-    :param protein_id:
-    :param pdb_file:
+    generate a .pse file openable by Pymol
+    :param protein_id: protein uniprot ID
+    :param pdb_file: pdb file path
     :param id_freq_array_dict: returned by freq_ptm_index_gen_batch_v2
     :param id_ptm_idx_dict: returned by freq_ptm_index_gen_batch_v2
     :param save_path: pse file save path
@@ -68,3 +68,26 @@ def pse_gen(protein_id,
     pymol.cmd.save(save_path)
 
     pymol.cmd.quit()
+
+
+if __name__ == '__main__':
+    from glob import glob
+    from pymol_test import fasta_reader, peptide_counting, freq_ptm_index_gen_batch_v2
+
+    pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
+    base_path = 'D:/data/native_protein_digestion/12072021/control/'
+    fasta_file = 'D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_only.fasta'
+
+    folders = glob(base_path + '*/')
+    time_points = [each.split('\\')[-2] for each in folders]
+    protein_dict = fasta_reader(fasta_file)
+
+    ### aggregate psm
+    psm_dict = {val: [psm for file in [base_path + '/' + each + '/peptide.tsv' for each in time_points[:idx + 1]]
+                      for psm in peptide_counting(file)]
+                for idx, val in enumerate(time_points)}
+
+    id_freq_array_dict, id_ptm_index_dict = freq_ptm_index_gen_batch_v2(psm_dict[time_points[2]], protein_dict)[:2]
+
+    pdb_path = pdb_base_path + 'AF-' + 'P08559' + '-F1-model_v1.pdb'
+    pse_gen('P08559', pdb_path, id_freq_array_dict, id_ptm_index_dict, base_path + 'P08559_30min.pse')
