@@ -65,7 +65,13 @@ def pse_gen(protein_id,
         for ptm in ptm_nonzero_idx_dict:
             for ptm_idx in ptm_nonzero_idx_dict[ptm]:
                 pymol.cmd.color(ptm, 'resi %i' % (ptm_idx + 1))
+
+    # show sequence in pymol
+    pymol.cmd.set('seq_view', 1)
+    # save pymol session file
     pymol.cmd.save(save_path)
+
+    # print (pymol.cmd.get_session())
 
     pymol.cmd.quit()
 

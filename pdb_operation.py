@@ -355,6 +355,7 @@ def read_pdb_fasta(pdb_fasta):
 if __name__ == '__main__':
     import time
     import pickle
+    import matplotlib.pyplot as plt
     pdb_file = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-Q9H2X0-F1-model_v1.pdb'
     fasta_file = 'D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_tr.fasta'
     protein_dict = fasta_reader(fasta_file)
@@ -384,6 +385,7 @@ if __name__ == '__main__':
 
     """
     ### get unique peptide dict
+    """
     from commons import get_unique_peptide
 
     def protein_tsv_reader(protein_tsv_file):
@@ -402,9 +404,9 @@ if __name__ == '__main__':
     psm_path_list = [each + '/peptide.tsv' for each in folders]
     unique_peptide_dict = get_unique_peptide(psm_path_list)
     print(f'{len(psm_path_list)} psm files to read...')
-
+    """
     ### calculate covered distance/average pLDDT and write to excel
-
+    """
     import pandas as pd
     df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
 
@@ -430,9 +432,9 @@ if __name__ == '__main__':
             else:
                 continue
     df.to_excel('D:/data/native_protein_digestion/12072021/control/cov_dist_unique.xlsx')
-
     """
-    import matplotlib.pyplot as plt
+    """
+    
     from statistics import mean
     import random
     # prots_tocheck = random.sample(protein_list,100)
