@@ -250,19 +250,19 @@ if __name__ == '__main__':
     protein_to_check = [(i[0],i[1].split('-')[1]) for i in pdb_to_check if i[1].split('-')[1] in protein_list]
 
     pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
-    base_path = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20'
-    folders = glob(base_path+'/*_h2o/')
+    base_path = 'D:/data/native_protein_digestion/12072021/control'
+    folders = glob(base_path + '/*/')
 
     time_points = [each.split('\\')[-2] for each in folders]
     print (time_points)
 
     ### aggregate psm
-    psm_dict = {val:[psm for file in [base_path +'/'+ each + '/psm.tsv' for each in time_points[:idx+1]]
-                     for psm in modified_peptide_from_psm(file)]
-                for idx, val in enumerate(time_points)}
+    # psm_dict = {val:[psm for file in [base_path +'/'+ each + '/psm.tsv' for each in time_points[:idx+1]]
+    #                  for psm in modified_peptide_from_psm(file)]
+    #             for idx, val in enumerate(time_points)}
     # psm_dict = {time:modified_peptide_from_psm(base_path+time+'/psm.tsv') for time in time_points}
     ### unique psm
-    # psm_dict = get_unique_peptide(glob(base_path+'/*/peptide.tsv'))
+    psm_dict = get_unique_peptide(glob(base_path + '/*/peptide.tsv'))
 
     # control_df = pd.read_excel('D:/data/native_protein_digestion/12072021/control/spearman_corr_pval_nofill.xlsx',index_col=0)
     # protein_cand_list = control_df.loc[(control_df['spearman correlation']<0)&(control_df['p value']<0.05)].index.tolist()
@@ -294,7 +294,9 @@ if __name__ == '__main__':
     #                     png_sava_path='D:/data/native_protein_digestion/10282021/search_result_4miss/h20/rossetta_mapping/'
     #                                   + each_protein +'_rossetta_'+ val + '.png')
 
-    show_cov_3d(psm_dict['01h_h2o'], protein_dict['P30086'], 'D:/data/pdb/robetta_models_PEBP1_P30086.pdb')
+    for time in time_points:
+        show_cov_3d(psm_dict[time], protein_dict['O00571'], pdb_base_path + 'AF-O00571-F1-model_v1.pdb', png_sava_path=
+        'D:/data/native_protein_digestion/12072021/3d_mapping_control/O00571_' + time + '.png')
 
     # for i in ['1h','2h','4h','18h']:
     #     show_cov_3d(psm_dict[i],protein_dict['P61604'],pdb_base_path+'AF-P61604-F1-model_v1.pdb',
