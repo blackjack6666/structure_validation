@@ -83,7 +83,8 @@ def show_cov_3d(protein_id,
 
 if __name__=="__main__":
     ### read protein complex json file into dictionary
-
+    ### CORUM data bases
+    """
     json_path = 'D:/data/coreComplexes.json'
     f = open(json_path)
     complex_list = json.load(f)
@@ -100,6 +101,7 @@ if __name__=="__main__":
         human_complex_list}
     # for each in human_complex_dict:
     #     print (each, len(human_complex_dict[each][0].split(';')))
+    """
 
     ### read psms from tsv
     pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
@@ -117,7 +119,8 @@ if __name__=="__main__":
     """
     fasta_file = 'D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_only.fasta'
     protein_dict = fasta_reader(fasta_file)
-
+    proteins_identified = pd.read_excel('D:/data/native_protein_digestion/12072021/control/cov_dist_unique.xlsx',
+                                        index_col=0).index
     ### generate 3d coverage map
     # color_list = [[1.0,0,0],[0,1.0,0.1]]
     """
@@ -150,10 +153,11 @@ if __name__=="__main__":
     """
 
     ### calculate p val for protein complex, fisher exact test
-    """
     import os
     from scipy.stats import fisher_exact
 
+    """
+    
     total_id_protein = 1709  # number of prt identifed
     protein_background = 20378  # number of prot in database
     folder_complex = os.listdir("D:/data/native_protein_digestion/12072021/control_complex_map/")
@@ -180,3 +184,36 @@ if __name__=="__main__":
             df.loc[each,i] = pval_dict[each][j]
     df.to_excel('D:/data/native_protein_digestion/12072021/control_complex_map/fisher_exact_pval.xlsx')
     """
+
+    ### hu.MAP 2.0, check which proteins are in this complex database
+    total_id_protein = 1709  # number of prt identifed
+    protein_background = 20378  # number of prot in database
+    mapped_dict = {}
+    humap2_0 = pd.read_csv('D:/data/native_protein_digestion/12072021/humap2_complexes_20200809.txt', delimiter=',')
+    complex_num_protein_dict = {complex_id: len(uniprot_ids.split(' '))
+                                for complex_id, uniprot_ids in zip(humap2_0['HuMAP2_ID'], humap2_0['Uniprot_ACCs'])}
+
+    for tp in humap2_0.itertuples():
+        complex_n, confidence, uniprot_ns = tp[1:4]
+        uniprot_list = [each for each in uniprot_ns.split(' ') if each in proteins_identified]
+        if uniprot_list:
+            mapped_dict[complex_n] = (confidence, uniprot_list)
+
+    ### calculate p val of protein complex using fisher exact
+    df_pval = pd.DataFrame()
+    columns = ['confidence', 'total # proteins in complex', '# identified proteins in complex',
+               'identified Uniprot ids', 'p val']
+    for each in mapped_dict:
+        confid, num_id_protein = mapped_dict[each][0], len(mapped_dict[each][1])
+        mapped_prot_ids = ' '.join(mapped_dict[each][1])
+        num_id_in_complex = complex_num_protein_dict[each]
+        non_id_in_complex = num_id_in_complex - num_id_protein
+        num_other = total_id_protein - num_id_protein
+        num_other_nonid = protein_background - total_id_protein - non_id_in_complex
+        table = np.array([[num_id_protein, num_other], [non_id_in_complex, num_other_nonid]])
+        p_val = fisher_exact(table, alternative='greater')[1]
+        for val, column in zip([confid, complex_num_protein_dict[each], num_id_protein, mapped_prot_ids, p_val],
+                               columns):
+            df_pval.loc[each, column] = val
+
+    df_pval.to_excel('D:/data/native_protein_digestion/12072021/control/humap2.0_mapped.xlsx')
