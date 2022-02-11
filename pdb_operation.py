@@ -385,6 +385,7 @@ if __name__ == '__main__':
 
     """
     ### get unique peptide dict
+    pdb_base = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
     """
     from commons import get_unique_peptide
 
@@ -397,7 +398,7 @@ if __name__ == '__main__':
     protein_list = protein_tsv_reader(protein_tsv)
     sub_protein_dict = {prot:protein_dict[prot] for prot in protein_list}
 
-    pdb_base = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
+    
     base_path = 'D:/data/native_protein_digestion/12072021/control/'
     folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
     time_points = [each.split('/')[-1] for each in folders]
@@ -475,18 +476,43 @@ if __name__ == '__main__':
     """
 
     ### plot 3d and centroid
-    """
-    for prot in prots_tocheck:
+    from matplotlib import animation
+
+
+    def rotate(angle):
+        ax.view_init(azim=angle)
+
+
+    # for prot in prots_tocheck:
+    for prot in ['Q13148']:
         pdb_file_path = pdb_base+'AF-'+prot+'-F1-model_v1.pdb'
 
         if os.path.exists(pdb_file_path):
             fig = plt.figure()
             ax = fig.add_subplot(projection='3d')
             print (prot)
+
             residue_atom_xyz = pdb_file_reader(pdb_file_path)
-            xyz = [each for v in residue_atom_xyz.values() for each in v]
+            # finding coordinates of K and R
+            k_ind, r_ind = [m.end() for m in re.finditer(r'K(?=[^P])', protein_dict[prot])], \
+                           [m.end() for m in re.finditer(r'R(?=[^P])', protein_dict[prot])]
+
+            k_x, k_y, k_z = zip(*[each for ind in k_ind for each in residue_atom_xyz[ind]])
+            r_x, r_y, r_z = zip(*[each for ind in r_ind for each in residue_atom_xyz[ind]])
+
+            # plot all atoms
+            # xyz = [each for v in residue_atom_xyz.values() for each in v]
+
+            # get xyz of atoms other than K and R
+            xyz = [each for ind in residue_atom_xyz if ind not in k_ind + r_ind for each in residue_atom_xyz[ind]]
             x,y,z = zip(*xyz)
+
             ax.scatter(x,y,z,marker='o',s=0.5)
+
+            # highlght K and R
+            ax.scatter(k_x, k_y, k_z, marker='o', s=0.5, color='green')
+            ax.scatter(r_x, r_y, r_z, marker='o', s=0.5, color='orange')
+
             centroid = find_centroid(residue_atom_xyz)
             # plot centroid
             ax.scatter([centroid[0]],[centroid[1]],[centroid[2]], marker='o', s=8,color='r')
@@ -494,8 +520,27 @@ if __name__ == '__main__':
             ax.set_xlabel('X axis')
             ax.set_ylabel('Y axis')
             ax.set_zlabel('Z axis')
-            plt.savefig('D:/data/native_protein_digestion/10282021/protein_centroid_median/%s.png' % prot)
-    """
+
+            # Get rid of colored axes planes
+            # First remove fill
+            ax.xaxis.pane.fill = False
+            ax.yaxis.pane.fill = False
+            ax.zaxis.pane.fill = False
+
+            # Now set color to white (or whatever is "invisible")
+            # ax.xaxis.pane.set_edgecolor('w')
+            # ax.yaxis.pane.set_edgecolor('w')
+            # ax.zaxis.pane.set_edgecolor('w')
+
+            # Bonus: To get rid of the grid as well:
+            ax.grid(False)
+            # make gif
+            rot_animation = animation.FuncAnimation(fig, rotate, frames=np.arange(0, 362, 2), interval=100)
+            rot_animation.save('D:/data/native_protein_digestion/10282021/protein_centroid_median/%s.gif' % prot,
+                               dpi=300, writer='imagemagick')
+            # plt.show()
+            # plt.savefig('D:/data/native_protein_digestion/10282021/protein_centroid_median/%s.png' % prot, dpi=300)
+
 
     ### plot residue distance distribution
     """
