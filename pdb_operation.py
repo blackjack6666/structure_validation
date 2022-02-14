@@ -385,8 +385,9 @@ if __name__ == '__main__':
 
     """
     ### get unique peptide dict
-    pdb_base = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
     """
+    pdb_base = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
+
     from commons import get_unique_peptide
 
     def protein_tsv_reader(protein_tsv_file):
@@ -415,7 +416,8 @@ if __name__ == '__main__':
         print (pep_tsv)
         # peptide_list = peptide_counting(pep_tsv)
         peptide_list = unique_peptide_dict[pep_tsv.split('/')[-2]]
-        freq_array_dict = freq_ptm_index_gen_batch_v2(peptide_list,protein_dict)[0]
+        # freq_array_dict = freq_ptm_index_gen_batch_v2(peptide_list,protein_dict)[0]
+        freq_array_dict = mapping_KR_toarray(peptide_list, sub_protein_dict)
         for prot in protein_list:
             pdb_file_path = pdb_base+'AF-'+prot+'-F1-model_v1.pdb'
             if os.path.exists(pdb_file_path):
@@ -432,7 +434,7 @@ if __name__ == '__main__':
                     print ('%s protein len between pdb and fasta is not same' % prot)
             else:
                 continue
-    df.to_excel('D:/data/native_protein_digestion/12072021/control/cov_dist_unique.xlsx')
+    df.to_excel('D:/data/native_protein_digestion/12072021/control/KRtocenter_dist_unique.xlsx')
     """
     """
     
@@ -476,6 +478,7 @@ if __name__ == '__main__':
     """
 
     ### plot 3d and centroid
+    """
     from matplotlib import animation
 
 
@@ -541,7 +544,7 @@ if __name__ == '__main__':
             # plt.show()
             # plt.savefig('D:/data/native_protein_digestion/10282021/protein_centroid_median/%s.png' % prot, dpi=300)
 
-
+    """
     ### plot residue distance distribution
     """
     bot,med,top,all = [],[],[],[]

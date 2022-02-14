@@ -6,7 +6,7 @@ from pymol_test import peptide_counting, fasta_reader, modified_peptide_from_psm
 from glob import glob
 
 
-def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_path=None):
+def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_path=None, plot_KR=False):
     """
     show 3d coverage map based on peptide list and a protein_seq
     :param peptide_list:
@@ -18,14 +18,22 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
 
     import time
     time_start = time.time()
-    freq_array, ptm_loc_list, PTM_sites_counting = freq_array_and_PTM_index_generator(peptide_list,protein_seq)
+    if not plot_KR:
+        freq_array, ptm_loc_list, PTM_sites_counting = freq_array_and_PTM_index_generator(peptide_list, protein_seq)
+    else:
+        import re
+        freq_array = np.zeros(len(protein_seq))
+        kr_index = [m.end() - 1 for m in re.finditer(r'K(?=[^P])|R(?=[^P])', protein_seq)]
+        for each in kr_index:
+            freq_array[each] += 1
+
     # print (freq_array)
-    print (ptm_loc_list)
-    print (f'ptm sites counting: {PTM_sites_counting}')
+    # print (ptm_loc_list)
+    # print (f'ptm sites counting: {PTM_sites_counting}')
     # open pdb file with pymol
     pdb_name = os.path.split(pdb_file)[1]
     print (pdb_name)
-    # pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
     pymol.finish_launching()
     pymol.cmd.load(pdb_file, pdb_name)
     pymol.cmd.disable("all")
@@ -67,7 +75,7 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
 
     # pymol2glmol, convert pdb to pse and visualize through html
     # dump_rep(pdb_name,base_path)
-    # pymol.cmd.delete(pdb_name)
+    pymol.cmd.delete(pdb_name)
     print(f'time used for mapping: {pdb_name, time.time() - time_start}')
     # pymol.cmd.save('new_file.pse')
     # Get out!
@@ -105,7 +113,7 @@ def show_multiple_color(psm_list_2d,
     # initialize pdb file in pymol api
     pdb_name = os.path.split(pdb_file)[1]
     print(pdb_name)
-    # pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
     pymol.finish_launching()
     pymol.cmd.load(pdb_file, pdb_name)
     pymol.cmd.disable("all")
@@ -154,7 +162,7 @@ def show_multiple_color(psm_list_2d,
 
     print (f'time used {time.time()-time_start}')
     # pymol.cmd.quit()
-    # pymol.cmd.delete(pdb_name)
+    pymol.cmd.delete(pdb_name)
 
 
 def show_3d_batch(psm_list, protein_dict, pdb_base_path, png_save_path, time_point='1h',glmol_basepath=None):
@@ -250,8 +258,8 @@ if __name__ == '__main__':
     protein_to_check = [(i[0],i[1].split('-')[1]) for i in pdb_to_check if i[1].split('-')[1] in protein_list]
 
     pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
-    base_path = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20'
-    folders = glob(base_path + '/*_h2o/')
+    base_path = 'D:/data/native_protein_digestion/12072021/control/'
+    folders = glob(base_path + '*min/')
 
     time_points = [each.split('\\')[-2] for each in folders]
     print (time_points)
@@ -269,6 +277,7 @@ if __name__ == '__main__':
 
     # for each_protein in protein_to_check:
     # for each_protein in ['P10253', 'P26583', 'P27694', 'P28074', 'P30626', 'P43490', 'P78344', 'Q01813', 'Q16204', 'Q96M27', 'Q9GZZ1', 'Q9H1E3', 'Q9NPF4', 'Q9Y285', 'P41091', 'P60660', 'Q6L8Q7']:
+    # for each_protein in ['O00571','P60660']:
     #     pdb_file_name = 'AF-'+each_protein+'-F1-model_v1.pdb'
     #     if os.path.exists(pdb_base_path+pdb_file_name):
     #         print (each_protein)
@@ -276,7 +285,7 @@ if __name__ == '__main__':
     #             print (val)
     #             psm_list = psm_dict[val]
     #             show_cov_3d(psm_list,protein_dict[each_protein],pdb_base_path+pdb_file_name,
-    #                         png_sava_path='D:/data/native_protein_digestion/12072021/pngs_candidates/'+each_protein+'_'+val+'.png')
+    #                         png_sava_path='D:/data/native_protein_digestion/12072021/accumulated_pngs/'+each_protein+'_'+val+'.png')
     #
     #     else:
     #         print (f"{pdb_file_name} not existed")
@@ -294,7 +303,8 @@ if __name__ == '__main__':
     #                     png_sava_path='D:/data/native_protein_digestion/10282021/search_result_4miss/h20/rossetta_mapping/'
     #                                   + each_protein +'_rossetta_'+ val + '.png')
 
-    show_cov_3d(psm_dict['20h_h2o'], protein_dict['P30086'], pdb_base_path + 'AF-' + 'P30086' + '-F1-model_v1.pdb')
+    show_cov_3d(psm_dict['0240min'], protein_dict['Q13148'], pdb_base_path + 'AF-' + 'Q13148' + '-F1-model_v1.pdb',
+                png_sava_path='D:/data/native_protein_digestion/12072021/control/Q13148_KR.png', plot_KR=True)
 
     # for i in ['1h','2h','4h','18h']:
     #     show_cov_3d(psm_dict[i],protein_dict['P61604'],pdb_base_path+'AF-P61604-F1-model_v1.pdb',
