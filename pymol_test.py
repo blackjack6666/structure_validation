@@ -302,7 +302,9 @@ def modified_peptide_from_psm(psm_path):
 
 def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_path=None):
     """
+    MOST UPDTAED FUNCTION IS IN BACKGROUD_CHANGED.PY
     show 3d coverage map based on peptide list and a protein_seq
+
     :param peptide_list:
     :param protein_seq:
     :param pdb_file:

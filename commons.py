@@ -267,6 +267,26 @@ def dta_result_analyze(peptide_mass_dict):
                 isolabel_dict['light'].add(peptide_seq)
         prot_iso_lab_dict[prt] = isolabel_dict
     return prot_iso_lab_dict
+
+
+def protein_info_from_fasta(fasta_path):
+    """
+    get protein name, gene name, entry name, and description
+    :param fasta_path:
+    :return:
+    """
+    info_dict = {}
+    with open(fasta_path, 'r') as f:
+        for line in f:
+            if line.startswith('>'):
+                protein_id = line.split('|')[1]
+                cls = line.split('|')[0].split('>')[1]
+                # print (protein_id)
+                description = ' '.join(line.split('OS=')[0].split(' ')[1:])
+
+                gene_name = line.split('GN=')[1].split(' ')[0].rstrip('\n') if 'GN=' in line else 'N/A'
+                info_dict[protein_id] = (gene_name, description, cls)
+    return info_dict
 if __name__ == "__main__":
     """
     filename = 'C:/uic/lab/data/xinhao_data1/uniprot-proteome_UP000005640.fasta'

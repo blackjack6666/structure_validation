@@ -254,8 +254,8 @@ if __name__ == '__main__':
 
     """
 
-    protein_list = pd.read_excel('D:/data/native_protein_digestion/10282021/h20_cov_dist.xlsx', index_col=0).index
-    protein_to_check = [(i[0],i[1].split('-')[1]) for i in pdb_to_check if i[1].split('-')[1] in protein_list]
+    # protein_list = pd.read_excel('D:/data/native_protein_digestion/10282021/h20_cov_dist.xlsx', index_col=0).index
+    # protein_to_check = [(i[0],i[1].split('-')[1]) for i in pdb_to_check if i[1].split('-')[1] in protein_list]
 
     pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
     base_path = 'D:/data/native_protein_digestion/12072021/control/'
@@ -277,18 +277,18 @@ if __name__ == '__main__':
 
     # for each_protein in protein_to_check:
     # for each_protein in ['P10253', 'P26583', 'P27694', 'P28074', 'P30626', 'P43490', 'P78344', 'Q01813', 'Q16204', 'Q96M27', 'Q9GZZ1', 'Q9H1E3', 'Q9NPF4', 'Q9Y285', 'P41091', 'P60660', 'Q6L8Q7']:
-    # for each_protein in ['O00571','P60660']:
-    #     pdb_file_name = 'AF-'+each_protein+'-F1-model_v1.pdb'
-    #     if os.path.exists(pdb_base_path+pdb_file_name):
-    #         print (each_protein)
-    #         for val in time_points:
-    #             print (val)
-    #             psm_list = psm_dict[val]
-    #             show_cov_3d(psm_list,protein_dict[each_protein],pdb_base_path+pdb_file_name,
-    #                         png_sava_path='D:/data/native_protein_digestion/12072021/accumulated_pngs/'+each_protein+'_'+val+'.png')
-    #
-    #     else:
-    #         print (f"{pdb_file_name} not existed")
+    for each_protein in ['P10809', 'P32119', 'O95757', 'P43686', 'P61313', 'Q01813', 'Q99615', 'P08238']:
+        pdb_file_name = 'AF-' + each_protein + '-F1-model_v1.pdb'
+        if os.path.exists(pdb_base_path + pdb_file_name):
+            print(each_protein)
+            for val in time_points:
+                print(val)
+                psm_list = psm_dict[val]
+                show_cov_3d(psm_list, protein_dict[each_protein], pdb_base_path + pdb_file_name,
+                            png_sava_path='D:/data/native_protein_digestion/12072021/low_confident_coverage/' + each_protein + '_' + val + '_proximal_atoms.png')
+
+        else:
+            print(f"{pdb_file_name} not existed")
 
     ### map peptides to pdbs
     # for each_protein in protein_to_check:
@@ -303,8 +303,8 @@ if __name__ == '__main__':
     #                     png_sava_path='D:/data/native_protein_digestion/10282021/search_result_4miss/h20/rossetta_mapping/'
     #                                   + each_protein +'_rossetta_'+ val + '.png')
 
-    show_cov_3d(psm_dict['0240min'], protein_dict['Q13148'], pdb_base_path + 'AF-' + 'Q13148' + '-F1-model_v1.pdb',
-                png_sava_path='D:/data/native_protein_digestion/12072021/control/Q13148_KR.png', plot_KR=True)
+    # show_cov_3d(psm_dict['0240min'], protein_dict['P41091'], pdb_base_path + 'AF-' + 'P41091' + '-F1-model_v1.pdb',
+    #             png_sava_path='D:/data/native_protein_digestion/12072021/control/P41091_KR.png', plot_KR=True)
 
     # for i in ['1h','2h','4h','18h']:
     #     show_cov_3d(psm_dict[i],protein_dict['P61604'],pdb_base_path+'AF-P61604-F1-model_v1.pdb',

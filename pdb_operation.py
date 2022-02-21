@@ -384,9 +384,10 @@ if __name__ == '__main__':
     # print (cov_distance(freq_array,residue_distance))
 
     """
+    pdb_base = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
     ### get unique peptide dict
     """
-    pdb_base = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
+    
 
     from commons import get_unique_peptide
 
@@ -487,7 +488,7 @@ if __name__ == '__main__':
 
 
     # for prot in prots_tocheck:
-    for prot in ['Q13148']:
+    for prot in ['P41091']:
         pdb_file_path = pdb_base+'AF-'+prot+'-F1-model_v1.pdb'
 
         if os.path.exists(pdb_file_path):
@@ -538,13 +539,13 @@ if __name__ == '__main__':
             # Bonus: To get rid of the grid as well:
             ax.grid(False)
             # make gif
-            rot_animation = animation.FuncAnimation(fig, rotate, frames=np.arange(0, 362, 2), interval=100)
+            rot_animation = animation.FuncAnimation(fig, rotate, frames=np.arange(0, 362, 2), interval=150)
             rot_animation.save('D:/data/native_protein_digestion/10282021/protein_centroid_median/%s.gif' % prot,
                                dpi=300, writer='imagemagick')
             # plt.show()
             # plt.savefig('D:/data/native_protein_digestion/10282021/protein_centroid_median/%s.png' % prot, dpi=300)
-
     """
+
     ### plot residue distance distribution
     """
     bot,med,top,all = [],[],[],[]
