@@ -277,7 +277,8 @@ if __name__ == '__main__':
 
     # for each_protein in protein_to_check:
     # for each_protein in ['P10253', 'P26583', 'P27694', 'P28074', 'P30626', 'P43490', 'P78344', 'Q01813', 'Q16204', 'Q96M27', 'Q9GZZ1', 'Q9H1E3', 'Q9NPF4', 'Q9Y285', 'P41091', 'P60660', 'Q6L8Q7']:
-    for each_protein in ['P10809', 'P32119', 'O95757', 'P43686', 'P61313', 'Q01813', 'Q99615', 'P08238']:
+    for each_protein in ['Q9BZZ5', 'P12268', 'P12277', 'P49321', 'P62826', 'Q15008', 'O15042', 'P32322', 'P48444',
+                         'Q15029']:
         pdb_file_name = 'AF-' + each_protein + '-F1-model_v1.pdb'
         if os.path.exists(pdb_base_path + pdb_file_name):
             print(each_protein)
@@ -285,7 +286,7 @@ if __name__ == '__main__':
                 print(val)
                 psm_list = psm_dict[val]
                 show_cov_3d(psm_list, protein_dict[each_protein], pdb_base_path + pdb_file_name,
-                            png_sava_path='D:/data/native_protein_digestion/12072021/low_confident_coverage/' + each_protein + '_' + val + '_proximal_atoms.png')
+                            png_sava_path='D:/data/native_protein_digestion/12072021/high_conf_linear_regression/' + each_protein + '_' + val + '_dist.png')
 
         else:
             print(f"{pdb_file_name} not existed")
