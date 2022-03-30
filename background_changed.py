@@ -6,7 +6,14 @@ from pymol_test import peptide_counting, fasta_reader, modified_peptide_from_psm
 from glob import glob
 
 
-def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_path=None, plot_KR=False):
+def show_cov_3d(peptide_list,
+                protein_seq,
+                pdb_file,
+                png_sava_path=None,
+                base_path=None,
+                plot_KR=False,
+                color=False,
+                alpha=False):
     """
     show 3d coverage map based on peptide list and a protein_seq
     :param peptide_list:
@@ -33,7 +40,7 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
     # open pdb file with pymol
     pdb_name = os.path.split(pdb_file)[1]
     print (pdb_name)
-    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    # pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
     pymol.finish_launching()
     pymol.cmd.load(pdb_file, pdb_name)
     pymol.cmd.disable("all")
@@ -45,16 +52,36 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
     pymol.cmd.bg_color('white')
     pymol.cmd.remove('solvent') # optional
 
+    # set customized uncovered color
+    if color == False:
+        color_input = 'grey'
+    else:
+        pymol.cmd.set_color('cust_c', color)
+        color_input = 'cust_c'
+
     # highlight covered region
     max_freq = np.max(freq_array)
-    for i, j in enumerate(freq_array):
 
-        if freq_array[i] == 0:
-            pymol.cmd.color('grey', 'resi %i' % (i + 1))
+    # when no transparency is needed
+    if not alpha:
+        for i, j in enumerate(freq_array):
 
-        else:
-            # print(i)
-            pymol.cmd.color('red', 'resi %i' % (i + 1))
+            if freq_array[i] == 0:
+                pymol.cmd.color(color_input, 'resi %i' % (i + 1))
+
+            else:
+                # print(i)
+                pymol.cmd.color('red', 'resi %i' % (i + 1))
+    # when need to set alpha transparency
+    else:
+        for i, j in enumerate(freq_array):
+
+            if freq_array[i] == 0:
+                pymol.cmd.color(color_input, 'resi %i' % (i + 1))
+                pymol.cmd.set('cartoon_transparency', alpha, 'resi %i' % (i + 1))
+            else:
+                # print(i)
+                pymol.cmd.color('red', 'resi %i' % (i + 1))
     # stick cysteines
 
 
@@ -75,7 +102,7 @@ def show_cov_3d(peptide_list, protein_seq, pdb_file, png_sava_path=None, base_pa
 
     # pymol2glmol, convert pdb to pse and visualize through html
     # dump_rep(pdb_name,base_path)
-    pymol.cmd.delete(pdb_name)
+    # pymol.cmd.delete(pdb_name)
     print(f'time used for mapping: {pdb_name, time.time() - time_start}')
     # pymol.cmd.save('new_file.pse')
     # Get out!
@@ -113,7 +140,7 @@ def show_multiple_color(psm_list_2d,
     # initialize pdb file in pymol api
     pdb_name = os.path.split(pdb_file)[1]
     print(pdb_name)
-    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    # pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
     pymol.finish_launching()
     pymol.cmd.load(pdb_file, pdb_name)
     pymol.cmd.disable("all")
@@ -162,7 +189,7 @@ def show_multiple_color(psm_list_2d,
 
     print (f'time used {time.time()-time_start}')
     # pymol.cmd.quit()
-    pymol.cmd.delete(pdb_name)
+    # pymol.cmd.delete(pdb_name)
 
 
 def show_3d_batch(psm_list, protein_dict, pdb_base_path, png_save_path, time_point='1h',glmol_basepath=None):
@@ -258,8 +285,8 @@ if __name__ == '__main__':
     # protein_to_check = [(i[0],i[1].split('-')[1]) for i in pdb_to_check if i[1].split('-')[1] in protein_list]
 
     pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
-    base_path = 'D:/data/native_protein_digestion/12072021/control/'
-    folders = glob(base_path + '*min/')
+    base_path = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/'
+    folders = glob(base_path + '*h2o/')
 
     time_points = [each.split('\\')[-2] for each in folders]
     print (time_points)
@@ -277,24 +304,24 @@ if __name__ == '__main__':
 
     # for each_protein in protein_to_check:
     # for each_protein in ['P10253', 'P26583', 'P27694', 'P28074', 'P30626', 'P43490', 'P78344', 'Q01813', 'Q16204', 'Q96M27', 'Q9GZZ1', 'Q9H1E3', 'Q9NPF4', 'Q9Y285', 'P41091', 'P60660', 'Q6L8Q7']:
-    for each_protein in ['Q9BZZ5', 'P12268', 'P12277', 'P49321', 'P62826', 'Q15008', 'O15042', 'P32322', 'P48444',
-                         'Q15029']:
-        pdb_file_name = 'AF-' + each_protein + '-F1-model_v1.pdb'
-        if os.path.exists(pdb_base_path + pdb_file_name):
-            print(each_protein)
-            for val in time_points:
-                print(val)
-                psm_list = psm_dict[val]
-                show_cov_3d(psm_list, protein_dict[each_protein], pdb_base_path + pdb_file_name,
-                            png_sava_path='D:/data/native_protein_digestion/12072021/high_conf_linear_regression/' + each_protein + '_' + val + '_dist.png')
-
-        else:
-            print(f"{pdb_file_name} not existed")
+    # for each_protein in ['Q9BZZ5', 'P12268', 'P12277', 'P49321', 'P62826', 'Q15008', 'O15042', 'P32322', 'P48444',
+    #                      'Q15029']:
+    #     pdb_file_name = 'AF-' + each_protein + '-F1-model_v1.pdb'
+    #     if os.path.exists(pdb_base_path + pdb_file_name):
+    #         print(each_protein)
+    #         for val in time_points:
+    #             print(val)
+    #             psm_list = psm_dict[val]
+    #             show_cov_3d(psm_list, protein_dict[each_protein], pdb_base_path + pdb_file_name,
+    #                         png_sava_path='D:/data/native_protein_digestion/12072021/high_conf_linear_regression/' + each_protein + '_' + val + '_dist.png')
+    #
+    #     else:
+    #         print(f"{pdb_file_name} not existed")
 
     ### map peptides to pdbs
     # for each_protein in protein_to_check:
-    # for each_protein in ['P13667']:
-    #     pdb_file_name = 'D:/data/pdb/robetta_models_PDIA4.pdb'
+    # for each_protein in ['P30086']:
+    #     pdb_file_name = 'D:/data/pdb/robetta_models_PEBP1_P30086.pdb'
     #
     #
     #     for val in time_points:
@@ -303,7 +330,8 @@ if __name__ == '__main__':
     #         show_cov_3d(psm_list, protein_dict[each_protein], pdb_file_name,
     #                     png_sava_path='D:/data/native_protein_digestion/10282021/search_result_4miss/h20/rossetta_mapping/'
     #                                   + each_protein +'_rossetta_'+ val + '.png')
-
+    show_cov_3d(psm_dict['20h_h2o'], protein_dict['P30086'],
+                'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-P30086-F1-model_v1.pdb', alpha=0.6)
     # show_cov_3d(psm_dict['0240min'], protein_dict['P41091'], pdb_base_path + 'AF-' + 'P41091' + '-F1-model_v1.pdb',
     #             png_sava_path='D:/data/native_protein_digestion/12072021/control/P41091_KR.png', plot_KR=True)
 

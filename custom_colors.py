@@ -86,7 +86,7 @@ if __name__=='__main__':
     pdb_path = 'D:/data/native_protein_digestion/pdb_files/pdb6gmh_O00267.ent'
 
     peptide_path = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/01h_h2o/peptide.tsv'
-    peptide_list = peptide_counting(peptide_path)
+    # peptide_list = peptide_counting(peptide_path)
     protein_dict = fasta_reader('D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_tr.fasta')
     protein = 'P04406'
     protein_seq = protein_dict[protein]
@@ -98,7 +98,9 @@ if __name__=='__main__':
     #     peptide_list = peptide_counting('D:/data/native_protein_digestion/10282021/search_result_4miss/h20/'+time+'/peptide.tsv')
     #     png_path = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/different_color_map/' + prote in +'_'+time+'_alphafold.png'
     #     show_cov_3d_custom_c(peptide_list,protein_seq,alpha_fold_pdb,color,png_path)
-
+    # peptide_list = peptide_counting('D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_1080D/peptide.tsv')+\
+    #                peptide_counting('D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_1080F/peptide.tsv')
+    # show_cov_3d_custom_c(peptide_list,protein_seq,alpha_fold_pdb,[0.01,0.71,0.99], 'D:/data/Naba_deep_matrisome/07232021_secondsearch/3d_structures/SNED1_18h.png')
     ### map unique peptide only to 3d
     from glob import glob
     dta_file = 'D:/data/native_protein_digestion/dimethylation/DTASELECT/030515_control_HL_PBS_chy_corr_2015_04_14_14_31470_DTASelect-filter.txt'
@@ -108,13 +110,12 @@ if __name__=='__main__':
                        [each[0] for each in file_peptide_dict['HGAPDH']]]
     unique_2d = [[each.replace('K','K[28]') for each in peptide_2d_list[0]],
                  [each.replace('K','K[36]') for each in peptide_2d_list[1]]]
-
-    for each in unique_2d:
-        print ('\n'.join(each))
-    # c_list = [[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]]
-    # ptm_c_list = [[0.020, 0.980, 0.050], [0.035, 0.145, 0.859]]
-    # show_multiple_color(unique_2d, protein_seq, alpha_fold_pdb, c_list, ptm_color_list=ptm_c_list,
-    #                     png_save_path='D:/data/native_protein_digestion/dimethylation/GAPDH/' + protein + '_heavy_light.png')
+    #
+    # for each in unique_2d:
+    #     print ('\n'.join(each))
+    c_list = [[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]]
+    ptm_c_list = [[0.020, 0.980, 0.050], [0.035, 0.145, 0.859]]
+    show_multiple_color(unique_2d, protein_seq, alpha_fold_pdb, c_list, ptm_color_list=ptm_c_list)
     # dta_file_list = glob('D:/data/native_protein_digestion/dimethylation/DTASELECT/1_*DTASelect-filter.txt') + \
     #             glob('D:/data/native_protein_digestion/dimethylation/DTASELECT/2_*DTASelect-filter.txt')
     """
