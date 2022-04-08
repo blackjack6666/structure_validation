@@ -386,57 +386,62 @@ if __name__ == '__main__':
     """
     pdb_base = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
     ### get unique peptide dict
-    """
-    
 
-    from commons import get_unique_peptide
+    from commons import get_unique_peptide, psm_reader
 
     def protein_tsv_reader(protein_tsv_file):
         with open(protein_tsv_file, 'r') as file_open:
             next(file_open)
             return [line.split("\t")[3] for line in file_open]
 
-    protein_tsv = 'D:/data/native_protein_digestion/12072021/control/combined_protein.tsv'
+
+    protein_tsv = 'F:/native_digestion/chymotrypsin_4_8/search_result/combined_protein.tsv'
     protein_list = protein_tsv_reader(protein_tsv)
     sub_protein_dict = {prot:protein_dict[prot] for prot in protein_list}
 
-    
-    base_path = 'D:/data/native_protein_digestion/12072021/control/'
+    base_path = 'F:/native_digestion/chymotrypsin_4_8/search_result/'
     folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
     time_points = [each.split('/')[-1] for each in folders]
-    psm_path_list = [each + '/peptide.tsv' for each in folders]
-    unique_peptide_dict = get_unique_peptide(psm_path_list)
+    pep_path_list = [each + '/peptide.tsv' for each in folders]
+    psm_path_list = [each + '/psm.tsv' for each in folders]
+    unique_peptide_dict = get_unique_peptide(pep_path_list)
+    # total_psm_count = sum([psm_reader(each)[pep] for each in psm_path_list for pep in psm_reader(each)])
+    # print (total_psm_count)
     print(f'{len(psm_path_list)} psm files to read...')
-    """
+
     ### calculate covered distance/average pLDDT and write to excel
-    """
+
     import pandas as pd
     df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
 
-    for pep_tsv in psm_path_list:
+    for pep_tsv in pep_path_list:
         print (pep_tsv)
         # peptide_list = peptide_counting(pep_tsv)
         peptide_list = unique_peptide_dict[pep_tsv.split('/')[-2]]
+        if peptide_list:
         # freq_array_dict = freq_ptm_index_gen_batch_v2(peptide_list,protein_dict)[0]
         freq_array_dict = mapping_KR_toarray(peptide_list, sub_protein_dict)
         for prot in protein_list:
-            pdb_file_path = pdb_base+'AF-'+prot+'-F1-model_v1.pdb'
+            pdb_file_path = pdb_base + 'AF-' + prot + '-F1-model_v1.pdb'
             if os.path.exists(pdb_file_path):
                 residue_dist_dict = residue_distance(pdb_file_reader(pdb_file_path))
                 # plddt_dict = residue_plddt_retrieve(pdb_file_path)
                 if len(residue_dist_dict) == len(protein_dict[prot]):  # filter out those really long proteins
-                # if len(plddt_dict) == len(protein_dict[prot]):
+                    # if len(plddt_dict) == len(protein_dict[prot]):
                     freq_array = freq_array_dict[prot]
-                    cov_dist = cov_distance(freq_array,residue_dist_dict)
+                    cov_dist = cov_distance(freq_array, residue_dist_dict)
                     # ave_cov_plddt = cov_plddt(freq_array,plddt_dict)
-                    df.at[prot,pep_tsv.split('/')[-2]] = cov_dist
+                    df.at[prot, pep_tsv.split('/')[-2]] = cov_dist
                     # df.at[prot,pep_tsv.split('/')[-2]] = ave_cov_plddt
                 else:
-                    print ('%s protein len between pdb and fasta is not same' % prot)
+                    print('%s protein len between pdb and fasta is not same' % prot)
             else:
                 continue
-    df.to_excel('D:/data/native_protein_digestion/12072021/control/KRtocenter_dist_unique.xlsx')
-    """
+        else:
+            for prot in protein_list:
+                df.at[prot, pep_tsv.split('/')[-2]] = np.nan
+    df.to_excel('F:/native_digestion/chymotrypsin_4_8/search_result/KRtocenter_dist_unique.xlsx')
+
     """
     
     from statistics import mean

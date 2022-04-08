@@ -330,8 +330,9 @@ if __name__ == '__main__':
     #         show_cov_3d(psm_list, protein_dict[each_protein], pdb_file_name,
     #                     png_sava_path='D:/data/native_protein_digestion/10282021/search_result_4miss/h20/rossetta_mapping/'
     #                                   + each_protein +'_rossetta_'+ val + '.png')
-    show_cov_3d(psm_dict['20h_h2o'], protein_dict['P30086'],
-                'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-P30086-F1-model_v1.pdb', alpha=0.6)
+    show_cov_3d(psm_dict['02h_h2o'], protein_dict['Q96AE4'],
+                pdb_base_path + 'AF-' + 'Q96AE4' + '-F1-model_v1.pdb', alpha=0.6,
+                png_sava_path='D:/data/SCV/FUBP1_02h_alphafold.png')
     # show_cov_3d(psm_dict['0240min'], protein_dict['P41091'], pdb_base_path + 'AF-' + 'P41091' + '-F1-model_v1.pdb',
     #             png_sava_path='D:/data/native_protein_digestion/12072021/control/P41091_KR.png', plot_KR=True)
 

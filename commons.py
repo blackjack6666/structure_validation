@@ -164,6 +164,20 @@ def get_unique_peptide(list_of_peptsv:list):
     return unique_peptide_dict
 
 
+def psm_reader(psm_path, fragpipe_ver=13.0):
+    pep_spec_count_dict = defaultdict(int)
+    ret_pep_dict = {}
+    with open(psm_path, 'r') as f:
+        for i in range(1):
+            next(f)
+        for line in f:
+            line_split = line.split('\t')
+            pep_seq = line_split[2] if fragpipe_ver == 13.0 else line_split[1]
+            # retention_time = float(line_split[5])/60  if fragpipe_ver==13.0 else float(line_split[4])/60 # in minute
+            pep_spec_count_dict[pep_seq] += 1
+            # ret_pep_dict[retention_time] = pep_seq
+    return pep_spec_count_dict
+
 def miss_cleavage_identify(peptide_list,regex_pattern:dict):
     """
     calculate the ratio of peptides that has least one missed cleavage to all peptides
