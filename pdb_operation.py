@@ -315,7 +315,7 @@ def cov_KR_density(mapped_KR_array,KR_index_density_tuple):
     """
     k_density_dict,r_density_dict = KR_index_density_tuple
     combined_density_dict = k_density_dict | r_density_dict
-
+    # print (combined_density_dict)
     num_nonzeros = np.count_nonzero(mapped_KR_array)
     if num_nonzeros == 0:
         return None
@@ -323,11 +323,11 @@ def cov_KR_density(mapped_KR_array,KR_index_density_tuple):
         non_zero_index = np.nonzero(mapped_KR_array)[0]
         sum_density = 0
         for i in non_zero_index:
-            if i+1 in combined_density_dict:
-                sum_density+=combined_density_dict[i+1]
+            if i + 2 in combined_density_dict:
+                sum_density += combined_density_dict[i + 2]
             else:
                 print(i)
-
+                # pass
         return sum_density/num_nonzeros
 
 
@@ -386,7 +386,7 @@ if __name__ == '__main__':
     """
     pdb_base = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
     ### get unique peptide dict
-
+    """
     from commons import get_unique_peptide, psm_reader
 
     def protein_tsv_reader(protein_tsv_file):
@@ -405,12 +405,42 @@ if __name__ == '__main__':
     pep_path_list = [each + '/peptide.tsv' for each in folders]
     psm_path_list = [each + '/psm.tsv' for each in folders]
     unique_peptide_dict = get_unique_peptide(pep_path_list)
-    # total_psm_count = sum([psm_reader(each)[pep] for each in psm_path_list for pep in psm_reader(each)])
-    # print (total_psm_count)
-    print(f'{len(psm_path_list)} psm files to read...')
+    
+    # for each in psm_path_list:
+    #     psm_dict = psm_reader(each)
+    #     print(each, sum([psm_dict[pep] for pep in psm_dict]))
 
+    # print(f'{len(psm_path_list)} psm files to read...')
+    """
+    pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
+    base_path = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/'
+    folders = glob(base_path + '*h2o/')
+
+    time_points = [each.split('\\')[-2] for each in folders]
+    print(time_points)
+
+    sub_protein_dict = {'Q96AE4': protein_dict['Q96AE4']}
+    print('cleavage:', protein_dict['Q96AE4'][407:412])
+    from commons import get_unique_peptide
+
+    psm_dict = get_unique_peptide(glob(base_path + '/*/peptide.tsv'))
+
+    # pdb_file_path = pdb_base + 'AF-' + 'Q96AE4' + '-F1-model_v1.pdb'
+    pdb_file_path = 'D:/data/pdb/AF-Q96AE4-rosettamodel.pdb'
+    KR_density_dict = residue_density_cal((pdb_file_path, protein_dict['Q96AE4']))
+    # KR_density_alpha_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl', 'rb'))
+
+    for time in time_points:
+        print(time)
+        freq_array_dict = mapping_KR_toarray(psm_dict[time], sub_protein_dict)
+        # residue_dist_dict = residue_distance(pdb_file_reader(pdb_file_path))
+        freq_array = freq_array_dict['Q96AE4']
+
+        # cov_dist = cov_distance(freq_array, residue_dist_dict)
+        ave_KR_density = cov_KR_density(freq_array, KR_density_dict['Q96AE4'])
+        print(ave_KR_density)
     ### calculate covered distance/average pLDDT and write to excel
-
+    """
     import pandas as pd
     df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
 
@@ -441,7 +471,7 @@ if __name__ == '__main__':
             for prot in protein_list:
                 df.at[prot, pep_tsv.split('/')[-2]] = np.nan
     df.to_excel('F:/native_digestion/chymotrypsin_4_8/search_result/KRtocenter_dist_unique.xlsx')
-
+    """
     """
     
     from statistics import mean
@@ -623,4 +653,3 @@ if __name__ == '__main__':
     # print (k_r_density_dict['Q8IXR9'])
 
     # KR_mapped_dict = mapping_KR_toarray(unique_peptide_dict[psm_path_list[1].split('/')[-2]],protein_dict)
-

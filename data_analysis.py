@@ -239,11 +239,11 @@ if __name__ == '__main__':
     plt.show()
     """
 
-    peptsv_path = glob('D:/data/deep_proteome/20200915_tryp_37C_*min/peptide.tsv')
+    # peptsv_path = glob('D:/data/deep_proteome/20200915_tryp_37C_*min/peptide.tsv')
 
-    unique_pep_dict = get_unique_peptide(peptsv_path)
+    # unique_pep_dict = get_unique_peptide(peptsv_path)
     # print ({each:len(unique_pep_dict[each]) for each in unique_pep_dict})
-    protein_dict = fasta_reader('D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_only.fasta')
+    # protein_dict = fasta_reader('D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_only.fasta')
 
     ## check unique KR cleavage frequency
     # for each in peptsv_path:
@@ -265,3 +265,15 @@ if __name__ == '__main__':
     #     file_name = each.split('\\')[-2]
     #     kmiss_sum,r_miss_sum = miss_cleavage_identify(unique_pep_dict[file_name],regex_pattern={'K':r'K(?=[^P])','R':r'R(?=[^P])'})
     #     print (file_name,kmiss_sum,r_miss_sum)
+
+    plot_excel = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/plot.xlsx'
+    df_plot = pd.read_excel(plot_excel)
+    fig, ax = plt.subplots()
+    ax.set_xticks([1, 2, 3, 4])
+    ax.tick_params(axis='both', which='major', labelsize=15)
+    ax.set_xticklabels(['1 hour', '2 hour', '4 hour', '20 hour'])
+
+    sns.lineplot(ax=ax, data=df_plot, x='time', y='K/R distance to centroid', hue='model', style='model',
+                 markers=True, lw=2)
+    plt.legend(fontsize=12)
+    plt.show()
