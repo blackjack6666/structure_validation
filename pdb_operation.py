@@ -20,7 +20,12 @@ def pdb_file_reader(pdb_file):
 
     # append xyz coords of each atom to residue position
     for line in file_split:
-        residue_atom_xyz[int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group())].append([float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)])
+        # dont take hydrogen into account
+        if line.split('           ')[1].split('  ')[0] != 'H':
+            residue_atom_xyz[int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group())].append(
+                [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)])
+        else:
+            continue
     # print (residue_atom_xyz)
     return residue_atom_xyz
 
@@ -418,27 +423,27 @@ if __name__ == '__main__':
 
     time_points = [each.split('\\')[-2] for each in folders]
     print(time_points)
+    ### get KR to centroid distance and density profile for single protein
+    sub_protein_dict = {'Q02543': protein_dict['Q02543']}
 
-    sub_protein_dict = {'Q96AE4': protein_dict['Q96AE4']}
-    print('cleavage:', protein_dict['Q96AE4'][407:412])
     from commons import get_unique_peptide
 
     psm_dict = get_unique_peptide(glob(base_path + '/*/peptide.tsv'))
 
-    # pdb_file_path = pdb_base + 'AF-' + 'Q96AE4' + '-F1-model_v1.pdb'
-    pdb_file_path = 'D:/data/pdb/AF-Q96AE4-rosettamodel.pdb'
-    KR_density_dict = residue_density_cal((pdb_file_path, protein_dict['Q96AE4']))
-    # KR_density_alpha_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl', 'rb'))
+    pdb_file_path = pdb_base + 'AF-' + 'Q02543' + '-F1-model_v1.pdb'
+    # pdb_file_path = 'D:/data/pdb/AF-Q02543-rosettamodel.pdb'
+    KR_density_dict = residue_density_cal((pdb_file_path, protein_dict['Q02543']))
+
 
     for time in time_points:
         print(time)
         freq_array_dict = mapping_KR_toarray(psm_dict[time], sub_protein_dict)
-        # residue_dist_dict = residue_distance(pdb_file_reader(pdb_file_path))
-        freq_array = freq_array_dict['Q96AE4']
+        residue_dist_dict = residue_distance(pdb_file_reader(pdb_file_path))
+        freq_array = freq_array_dict['Q02543']
 
-        # cov_dist = cov_distance(freq_array, residue_dist_dict)
-        ave_KR_density = cov_KR_density(freq_array, KR_density_dict['Q96AE4'])
-        print(ave_KR_density)
+        cov_dist = cov_distance(freq_array, residue_dist_dict)
+        # ave_KR_density = cov_KR_density(freq_array, KR_density_dict['Q02543'])
+        print(cov_dist)
     ### calculate covered distance/average pLDDT and write to excel
     """
     import pandas as pd

@@ -266,7 +266,7 @@ if __name__ == '__main__':
     #     kmiss_sum,r_miss_sum = miss_cleavage_identify(unique_pep_dict[file_name],regex_pattern={'K':r'K(?=[^P])','R':r'R(?=[^P])'})
     #     print (file_name,kmiss_sum,r_miss_sum)
 
-    plot_excel = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/plot.xlsx'
+    plot_excel = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/RPL18A_plot.xlsx'
     df_plot = pd.read_excel(plot_excel)
     fig, ax = plt.subplots()
     ax.set_xticks([1, 2, 3, 4])
