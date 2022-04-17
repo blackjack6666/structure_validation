@@ -279,7 +279,7 @@ def mapping_KR_toarray(psm_list, protein_dict):
         zero_line[tp[1]]+=1
     for i in range(len(separtor_pos_array)-1):
         zero_line_slice = zero_line[separtor_pos_array[i]+1:separtor_pos_array[i+1]]
-        percentage_cov = np.count_nonzero(zero_line_slice)/len(zero_line_slice)*100
+        # percentage_cov = np.count_nonzero(zero_line_slice)/len(zero_line_slice)*100
         # if percentage_cov != 0:
         id_KR_array_dict[id_list[i]] = zero_line_slice
 

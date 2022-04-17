@@ -311,6 +311,34 @@ def residue_density_cal(input_tuple):
     return {alphafold_pdb_file.split('\\')[-1].split('-')[1]:(k_density_dict,r_density_dict)}
 
 
+def residue_density_cal2(input_tuple, protease='chymotrypsin low specificity', radius_power2=441):
+    """
+    calculate number of atoms within certain range of a residue
+    :param input_tuple:
+    :param protease:
+    :param radius_power2: radius power of protease
+    :return:
+    """
+
+    # chymotrypsin radius in water =2.1 nm ,reference https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2567952/
+    from commons import expasy_rules
+    alphafold_pdb_file, protein_seq = input_tuple
+    cleavage_density_dict = {}
+
+    cleavage_index = [m.end() for m in re.finditer(expasy_rules[protease], protein_seq)]
+    residue_atom_coord_dict = pdb_file_reader(alphafold_pdb_file)
+    xyz_nparray = [v for v in residue_atom_coord_dict.values()]
+
+    for each in cleavage_index:
+        ref = residue_atom_coord_dict[each][-1]
+        bool_array = [inSphere(j, ref, radius_power2) for i in xyz_nparray for j in i]
+        num_resi_inrange = np.count_nonzero(bool_array)
+        cleavage_density_dict[each] = num_resi_inrange
+
+    print(alphafold_pdb_file.split('\\')[-1].split('-')[1] + ' done.')
+    return {alphafold_pdb_file.split('\\')[-1].split('-')[1]: cleavage_density_dict}
+
+
 def cov_KR_density(mapped_KR_array,KR_index_density_tuple):
     """
     calculate the average covered K/R density
@@ -318,8 +346,13 @@ def cov_KR_density(mapped_KR_array,KR_index_density_tuple):
     :param: KR_index_density_dict: return by residue_density_cal['proteinid']
     :return:
     """
-    k_density_dict,r_density_dict = KR_index_density_tuple
-    combined_density_dict = k_density_dict | r_density_dict
+    if type(KR_index_density_tuple) == tuple:
+        k_density_dict, r_density_dict = KR_index_density_tuple
+        combined_density_dict = k_density_dict | r_density_dict
+    elif type(KR_index_density_tuple) == dict:
+        combined_density_dict = KR_index_density_tuple
+    else:
+        raise ValueError('index density should be a tuple of dictionary or dictionary ')
     # print (combined_density_dict)
     num_nonzeros = np.count_nonzero(mapped_KR_array)
     if num_nonzeros == 0:
@@ -328,10 +361,10 @@ def cov_KR_density(mapped_KR_array,KR_index_density_tuple):
         non_zero_index = np.nonzero(mapped_KR_array)[0]
         sum_density = 0
         for i in non_zero_index:
-            if i + 2 in combined_density_dict:
-                sum_density += combined_density_dict[i + 2]
+            if i + 1 in combined_density_dict:  ## to do, sometimes raise bug
+                sum_density += combined_density_dict[i + 1]
             else:
-                print(i)
+                print(f'{i + 1} position not in density dict')
                 # pass
         return sum_density/num_nonzeros
 
@@ -391,31 +424,33 @@ if __name__ == '__main__':
     """
     pdb_base = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
     ### get unique peptide dict
-    """
+
     from commons import get_unique_peptide, psm_reader
 
     def protein_tsv_reader(protein_tsv_file):
         with open(protein_tsv_file, 'r') as file_open:
             next(file_open)
-            return [line.split("\t")[3] for line in file_open]
+            return [line.split("\t")[1] for line in file_open]
 
 
-    protein_tsv = 'F:/native_digestion/chymotrypsin_4_8/search_result/combined_protein.tsv'
+    protein_tsv = 'F:/native_digestion/chymotrypsin_4_16/search/combined_protein.tsv'
     protein_list = protein_tsv_reader(protein_tsv)
     sub_protein_dict = {prot:protein_dict[prot] for prot in protein_list}
 
-    base_path = 'F:/native_digestion/chymotrypsin_4_8/search_result/'
+    base_path = 'F:/native_digestion/chymotrypsin_4_16/search/'
     folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
     time_points = [each.split('/')[-1] for each in folders]
     pep_path_list = [each + '/peptide.tsv' for each in folders]
     psm_path_list = [each + '/psm.tsv' for each in folders]
     unique_peptide_dict = get_unique_peptide(pep_path_list)
-    
+    # print ([(each,len(unique_peptide_dict[each])) for each in unique_peptide_dict])
     # for each in psm_path_list:
     #     psm_dict = psm_reader(each)
     #     print(each, sum([psm_dict[pep] for pep in psm_dict]))
 
     # print(f'{len(psm_path_list)} psm files to read...')
+
+    ### single protein analysis
     """
     pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
     base_path = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/'
@@ -444,6 +479,7 @@ if __name__ == '__main__':
         cov_dist = cov_distance(freq_array, residue_dist_dict)
         # ave_KR_density = cov_KR_density(freq_array, KR_density_dict['Q02543'])
         print(cov_dist)
+    """
     ### calculate covered distance/average pLDDT and write to excel
     """
     import pandas as pd
@@ -453,7 +489,8 @@ if __name__ == '__main__':
         print (pep_tsv)
         # peptide_list = peptide_counting(pep_tsv)
         peptide_list = unique_peptide_dict[pep_tsv.split('/')[-2]]
-        if peptide_list:
+
+        # if peptide_list:
         # freq_array_dict = freq_ptm_index_gen_batch_v2(peptide_list,protein_dict)[0]
         freq_array_dict = mapping_KR_toarray(peptide_list, sub_protein_dict)
         for prot in protein_list:
@@ -464,7 +501,9 @@ if __name__ == '__main__':
                 if len(residue_dist_dict) == len(protein_dict[prot]):  # filter out those really long proteins
                     # if len(plddt_dict) == len(protein_dict[prot]):
                     freq_array = freq_array_dict[prot]
+                    print (np.count_nonzero(freq_array))
                     cov_dist = cov_distance(freq_array, residue_dist_dict)
+                    print (cov_dist)
                     # ave_cov_plddt = cov_plddt(freq_array,plddt_dict)
                     df.at[prot, pep_tsv.split('/')[-2]] = cov_dist
                     # df.at[prot,pep_tsv.split('/')[-2]] = ave_cov_plddt
@@ -472,10 +511,10 @@ if __name__ == '__main__':
                     print('%s protein len between pdb and fasta is not same' % prot)
             else:
                 continue
-        else:
-            for prot in protein_list:
-                df.at[prot, pep_tsv.split('/')[-2]] = np.nan
-    df.to_excel('F:/native_digestion/chymotrypsin_4_8/search_result/KRtocenter_dist_unique.xlsx')
+        # else:
+        #     for prot in protein_list:
+        #         df.at[prot, pep_tsv.split('/')[-2]] = np.nan
+    df.to_excel('F:/native_digestion/chymotrypsin_4_16/search/distance.xlsx')
     """
     """
     
@@ -487,13 +526,15 @@ if __name__ == '__main__':
     """
 
     ### calculate covered K/R density and write to excel
-    """
+
     import pandas as pd
     from pymol_test import mapping_KR_toarray
 
     df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
-    KR_density_alpha_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
-    for pep_tsv in psm_path_list:
+    # KR_density_alpha_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
+    chymo_cleav_density_dict = pickle.load(
+        open('D:/data/alphafold_pdb/688_prot_chymotry_cleave_density_dict.pkl', 'rb'))
+    for pep_tsv in pep_path_list:
         print(pep_tsv)
         # peptide_list = peptide_counting(pep_tsv)
         peptide_list = unique_peptide_dict[pep_tsv.split('/')[-2]]
@@ -508,15 +549,15 @@ if __name__ == '__main__':
                 # if len(residue_dist_dict) == len(protein_dict[prot]):  # filter out those really long proteins
                 if len(plddt_dict) == len(protein_dict[prot]):
                     freq_array = freq_array_dict[prot]
-                    ave_KR_density = cov_KR_density(freq_array,KR_density_alpha_dict[prot])
+                    ave_KR_density = cov_KR_density(freq_array, chymo_cleav_density_dict[prot])
                     # df.at[prot,pep_tsv.split('/')[-2]] = cov_dist
                     df.at[prot, pep_tsv.split('/')[-2]] = ave_KR_density
                 else:
                     print('%s protein len between pdb and fasta is not same' % prot)
             else:
                 continue
-    df.to_excel('D:/data/native_protein_digestion/12072021/control/cov_KR_density.xlsx')
-    """
+    df.to_excel('F:/native_digestion/chymotrypsin_4_16/search/cov_chymo_density.xlsx')
+
 
     ### plot 3d and centroid
     """
@@ -623,11 +664,14 @@ if __name__ == '__main__':
     """
 
     ### extract pLDDT from all human alphafold pdbs
+
     import pickle
     from glob import glob
-    pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
-    pdb_files = glob(pdb_path + '*F1*.pdb')
-    # input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('\\')[-1]]) for pdb in pdb_files]
+
+    # pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
+    # # pdb_files = glob(pdb_path + '*F1*.pdb')
+    # pdb_files = [pdb_path+'AF-'+each+'-F1-model_v1.pdb' for each in protein_list if os.path.exists(pdb_path+'AF-'+each+'-F1-model_v1.pdb')]
+    # input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('/')[-1]]) for pdb in pdb_files]
     # print (len(input_list_tuples))
     """   
     count = 0
@@ -643,18 +687,20 @@ if __name__ == '__main__':
     """
 
     ### calculate residue density for each alphafold pdb, using multiple cpu cores
+    """
     import multiprocessing
-    # start = time.time()
-    # with multiprocessing.Pool(multiprocessing.cpu_count()-2) as pool:
-    #     result = pool.map(residue_density_cal,input_list_tuples,chunksize=500)
-    #     pool.close()
-    #     pool.join()
-    # file_density_dict = {k:v for d in result for k, v in d.items()}
-    #
-    # pickle.dump(file_density_dict,open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','wb'))
-    # print (time.time()-start)
+    start = time.time()
+    with multiprocessing.Pool(multiprocessing.cpu_count()-2) as pool:
+        result = pool.map(residue_density_cal2,input_list_tuples,chunksize=50)
+        pool.close()
+        pool.join()
+    file_density_dict = {k:v for d in result for k, v in d.items()}
+
+    pickle.dump(file_density_dict,open('D:/data/alphafold_pdb/human_file_chymotry_cleave_density_dict.pkl','wb'))
+    print (time.time()-start)
 
     # k_r_density_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
     # print (k_r_density_dict['Q8IXR9'])
 
     # KR_mapped_dict = mapping_KR_toarray(unique_peptide_dict[psm_path_list[1].split('/')[-2]],protein_dict)
+    """
