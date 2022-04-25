@@ -393,6 +393,7 @@ def read_pdb_fasta(pdb_fasta):
 if __name__ == '__main__':
     import time
     import pickle
+    import pandas as pd
     import matplotlib.pyplot as plt
     pdb_file = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-Q9H2X0-F1-model_v1.pdb'
     fasta_file = 'D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_tr.fasta'
@@ -425,19 +426,13 @@ if __name__ == '__main__':
     pdb_base = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
     ### get unique peptide dict
 
-    from commons import get_unique_peptide, psm_reader
+    from commons import get_unique_peptide, psm_reader, protein_tsv_reader
 
-    def protein_tsv_reader(protein_tsv_file):
-        with open(protein_tsv_file, 'r') as file_open:
-            next(file_open)
-            return [line.split("\t")[1] for line in file_open]
-
-
-    protein_tsv = 'F:/native_digestion/chymotrypsin_4_16/search/combined_protein.tsv'
-    protein_list = protein_tsv_reader(protein_tsv)
+    protein_tsv = 'D:/data/native_protein_digestion/12072021/control/combined_protein.tsv'
+    protein_list = protein_tsv_reader(protein_tsv, protein_column=3)
     sub_protein_dict = {prot:protein_dict[prot] for prot in protein_list}
 
-    base_path = 'F:/native_digestion/chymotrypsin_4_16/search/'
+    base_path = 'D:/data/native_protein_digestion/12072021/control/'
     folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
     time_points = [each.split('/')[-1] for each in folders]
     pep_path_list = [each + '/peptide.tsv' for each in folders]
@@ -526,19 +521,19 @@ if __name__ == '__main__':
     """
 
     ### calculate covered K/R density and write to excel
-
+    """
     import pandas as pd
     from pymol_test import mapping_KR_toarray
 
     df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
-    # KR_density_alpha_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
-    chymo_cleav_density_dict = pickle.load(
-        open('D:/data/alphafold_pdb/688_prot_chymotry_cleave_density_dict.pkl', 'rb'))
+    KR_density_alpha_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
+    # chymo_cleav_density_dict = pickle.load(
+    #     open('D:/data/alphafold_pdb/688_prot_chymotry_cleave_density_dict.pkl', 'rb'))
     for pep_tsv in pep_path_list:
         print(pep_tsv)
         # peptide_list = peptide_counting(pep_tsv)
         peptide_list = unique_peptide_dict[pep_tsv.split('/')[-2]]
-        freq_array_dict = mapping_KR_toarray(peptide_list, sub_protein_dict)
+        freq_array_dict, freq_array_index_dict = mapping_KR_toarray(peptide_list, sub_protein_dict)
         for prot in protein_list:
             print (prot)
             pdb_file_path = pdb_base + 'AF-' + prot + '-F1-model_v1.pdb'
@@ -548,16 +543,16 @@ if __name__ == '__main__':
 
                 # if len(residue_dist_dict) == len(protein_dict[prot]):  # filter out those really long proteins
                 if len(plddt_dict) == len(protein_dict[prot]):
-                    freq_array = freq_array_dict[prot]
-                    ave_KR_density = cov_KR_density(freq_array, chymo_cleav_density_dict[prot])
+                    # freq_array = freq_array_dict[prot]
+                    # ave_KR_density = cov_KR_density(freq_array, chymo_cleav_density_dict[prot])
                     # df.at[prot,pep_tsv.split('/')[-2]] = cov_dist
-                    df.at[prot, pep_tsv.split('/')[-2]] = ave_KR_density
+                    df.at[prot, pep_tsv.split('/')[-2]] = freq_array_index_dict[prot]
                 else:
                     print('%s protein len between pdb and fasta is not same' % prot)
-            else:
+            else: 
                 continue
-    df.to_excel('F:/native_digestion/chymotrypsin_4_16/search/cov_chymo_density.xlsx')
-
+    df.to_excel('D:/data/native_protein_digestion/12072021/control/cleavage_index.xlsx')
+    """
 
     ### plot 3d and centroid
     """

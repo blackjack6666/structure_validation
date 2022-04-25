@@ -40,7 +40,7 @@ def show_cov_3d(peptide_list,
     # open pdb file with pymol
     pdb_name = os.path.split(pdb_file)[1]
     print (pdb_name)
-    # pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
     pymol.finish_launching()
     pymol.cmd.load(pdb_file, pdb_name)
     pymol.cmd.disable("all")
@@ -102,7 +102,7 @@ def show_cov_3d(peptide_list,
 
     # pymol2glmol, convert pdb to pse and visualize through html
     # dump_rep(pdb_name,base_path)
-    # pymol.cmd.delete(pdb_name)
+    pymol.cmd.delete(pdb_name)
     print(f'time used for mapping: {pdb_name, time.time() - time_start}')
     # pymol.cmd.save('new_file.pse')
     # Get out!
@@ -245,24 +245,25 @@ def show_3d_batch(psm_list, protein_dict, pdb_base_path, png_save_path, time_poi
         # pymol.cmd.delete(pdb_name)
         # pymol.cmd.quit()
 
+
 if __name__ == '__main__':
     import time
     import pandas as pd
-    from commons import get_unique_peptide
+    from commons import get_unique_peptide, protein_tsv_reader
 
     pdb_file_base_path = 'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/'
 
-    peptide_tsv = 'D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_seq_240D/peptide.tsv'
-    time_point_rep = ['1h']
-    psm_tsv_list = ['D:/data/native_protein_digestion/'+ each + '_1_native/psm.tsv' for each in time_point_rep]
-    print(f'{len(psm_tsv_list)} psm files to read...')
+    # peptide_tsv = 'D:/data/Naba_deep_matrisome/07232021_secondsearch/SNED1_seq_240D/peptide.tsv'
+    # time_point_rep = ['1h']
+    # psm_tsv_list = ['D:/data/native_protein_digestion/'+ each + '_1_native/psm.tsv' for each in time_point_rep]
+    # print(f'{len(psm_tsv_list)} psm files to read...')
 
     fasta_file = 'D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_only.fasta'
-    peptide_list = peptide_counting(peptide_tsv)
+    # peptide_list = peptide_counting(peptide_tsv)
     protein_dict = fasta_reader(fasta_file)
 
-    checked_protein_file = open('D:/data/pdb/pdb_alpha_exactly_same.txt','r').read().split('\n')
-    pdb_to_check = [each.split('\t') for each in checked_protein_file[:-1]]
+    # checked_protein_file = open('D:/data/pdb/pdb_alpha_exactly_same.txt','r').read().split('\n')
+    # pdb_to_check = [each.split('\t') for each in checked_protein_file[:-1]]
 
     """
     psm_list = [psm for file in psm_tsv_list for psm in modified_peptide_from_psm(file)]
@@ -285,8 +286,13 @@ if __name__ == '__main__':
     # protein_to_check = [(i[0],i[1].split('-')[1]) for i in pdb_to_check if i[1].split('-')[1] in protein_list]
 
     pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
-    base_path = 'D:/data/native_protein_digestion/10282021/search_result_4miss/h20/'
-    folders = glob(base_path + '*h2o/')
+    base_path = 'D:/data/native_protein_digestion/12072021/control/'
+    folders = glob(base_path + '*/')
+    protein_list_chymo = protein_tsv_reader('F:/native_digestion/chymotrypsin_4_16/search/combined_protein.tsv')
+    protein_list_trypsin = protein_tsv_reader('D:/data/native_protein_digestion/12072021/control/combined_protein.tsv',
+                                              protein_column=3)
+    protein_list = [each for each in protein_list_chymo if each in protein_list_trypsin]
+    print(len(protein_list))
 
     time_points = [each.split('\\')[-2] for each in folders]
     print (time_points)
@@ -304,19 +310,18 @@ if __name__ == '__main__':
 
     # for each_protein in protein_to_check:
     # for each_protein in ['P10253', 'P26583', 'P27694', 'P28074', 'P30626', 'P43490', 'P78344', 'Q01813', 'Q16204', 'Q96M27', 'Q9GZZ1', 'Q9H1E3', 'Q9NPF4', 'Q9Y285', 'P41091', 'P60660', 'Q6L8Q7']:
-    # for each_protein in ['Q9BZZ5', 'P12268', 'P12277', 'P49321', 'P62826', 'Q15008', 'O15042', 'P32322', 'P48444',
-    #                      'Q15029']:
-    #     pdb_file_name = 'AF-' + each_protein + '-F1-model_v1.pdb'
-    #     if os.path.exists(pdb_base_path + pdb_file_name):
-    #         print(each_protein)
-    #         for val in time_points:
-    #             print(val)
-    #             psm_list = psm_dict[val]
-    #             show_cov_3d(psm_list, protein_dict[each_protein], pdb_base_path + pdb_file_name,
-    #                         png_sava_path='D:/data/native_protein_digestion/12072021/high_conf_linear_regression/' + each_protein + '_' + val + '_dist.png')
-    #
-    #     else:
-    #         print(f"{pdb_file_name} not existed")
+    for each_protein in protein_list:
+        pdb_file_name = 'AF-' + each_protein + '-F1-model_v1.pdb'
+        if os.path.exists(pdb_base_path + pdb_file_name):
+            print(each_protein)
+            for val in time_points:
+                print(val)
+                psm_list = psm_dict[val]
+                show_cov_3d(psm_list, protein_dict[each_protein], pdb_base_path + pdb_file_name,
+                            png_sava_path='F:/native_digestion/chymotrypsin_4_16/mapping_3d_trypsin_12072021/' + each_protein + '_' + val + '_trypsin.png')
+
+        else:
+            print(f"{pdb_file_name} not existed")
 
     ### map peptides to pdbs
     # for each_protein in protein_to_check:
@@ -330,9 +335,11 @@ if __name__ == '__main__':
     #         show_cov_3d(psm_list, protein_dict[each_protein], pdb_file_name,
     #                     png_sava_path='D:/data/native_protein_digestion/10282021/search_result_4miss/h20/rossetta_mapping/'
     #                                   + each_protein +'_rossetta_'+ val + '.png')
-    show_cov_3d(psm_dict['02h_h2o'], protein_dict['Q96AE4'],
-                pdb_base_path + 'AF-' + 'Q96AE4' + '-F1-model_v1.pdb', alpha=0.6,
-                png_sava_path='D:/data/SCV/FUBP1_02h_alphafold.png')
+
+    # show_cov_3d(psm_dict['02h_h2o'], protein_dict['Q96AE4'],
+    #             pdb_base_path + 'AF-' + 'Q96AE4' + '-F1-model_v1.pdb', alpha=0.6,
+    #             png_sava_path='D:/data/SCV/FUBP1_02h_alphafold.png')
+
     # show_cov_3d(psm_dict['0240min'], protein_dict['P41091'], pdb_base_path + 'AF-' + 'P41091' + '-F1-model_v1.pdb',
     #             png_sava_path='D:/data/native_protein_digestion/12072021/control/P41091_KR.png', plot_KR=True)
 

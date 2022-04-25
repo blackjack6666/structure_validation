@@ -324,6 +324,12 @@ def dta_result_analyze(peptide_mass_dict):
     return prot_iso_lab_dict
 
 
+def protein_tsv_reader(protein_tsv_file, protein_column=1):
+    with open(protein_tsv_file, 'r') as file_open:
+        next(file_open)
+        return [line.split("\t")[protein_column] for line in file_open]
+
+
 def protein_info_from_fasta(fasta_path):
     """
     get protein name, gene name, entry name, and description

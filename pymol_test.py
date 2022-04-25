@@ -263,7 +263,14 @@ def freq_ptm_index_gen_batch_v2(psm_list, protein_dict, regex_dict=None):
 
 
 def mapping_KR_toarray(psm_list, protein_dict):
+    """
+    only map the cleavage sites which are start and end of peptide
+    :param psm_list:
+    :param protein_dict:
+    :return:
+    """
     id_KR_array_dict = {}
+    id_KR_index_dict = {}
 
     # aho mapping
     id_list, seq_list = commons.extract_UNID_and_seq(protein_dict)
@@ -282,8 +289,9 @@ def mapping_KR_toarray(psm_list, protein_dict):
         # percentage_cov = np.count_nonzero(zero_line_slice)/len(zero_line_slice)*100
         # if percentage_cov != 0:
         id_KR_array_dict[id_list[i]] = zero_line_slice
+        id_KR_index_dict[id_list[i]] = np.nonzero(zero_line_slice)[0]
 
-    return id_KR_array_dict
+    return id_KR_array_dict, id_KR_index_dict
 
 
 def modified_peptide_from_psm(psm_path):
