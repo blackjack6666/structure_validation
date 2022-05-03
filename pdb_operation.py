@@ -311,7 +311,7 @@ def residue_density_cal(input_tuple):
     return {alphafold_pdb_file.split('\\')[-1].split('-')[1]:(k_density_dict,r_density_dict)}
 
 
-def residue_density_cal2(input_tuple, protease='chymotrypsin low specificity', radius_power2=441):
+def residue_density_cal2(input_tuple, protease='chymotrypsin low specificity', radius=15):
     """
     calculate number of atoms within certain range of a residue
     :param input_tuple:
@@ -328,11 +328,13 @@ def residue_density_cal2(input_tuple, protease='chymotrypsin low specificity', r
     cleavage_index = [m.end() for m in re.finditer(expasy_rules[protease], protein_seq)]
     residue_atom_coord_dict = pdb_file_reader(alphafold_pdb_file)
     xyz_nparray = [v for v in residue_atom_coord_dict.values()]
+    xyz_2d_reshape = np.reshape(xyz_nparray, (-1, 3))  # reshape atom coords into 2d array
 
     for each in cleavage_index:
         ref = residue_atom_coord_dict[each][-1]
-        bool_array = [inSphere(j, ref, radius_power2) for i in xyz_nparray for j in i]
-        num_resi_inrange = np.count_nonzero(bool_array)
+        # bool_array = [inSphere(j, ref, radius_power2) for i in xyz_nparray for j in i]
+        # num_resi_inrange = np.count_nonzero(bool_array)
+        num_resi_inrange = inSphere2(ref, xyz_2d_reshape, radius)
         cleavage_density_dict[each] = num_resi_inrange
 
     print(alphafold_pdb_file.split('\\')[-1].split('-')[1] + ' done.')
@@ -370,12 +372,40 @@ def cov_KR_density(mapped_KR_array,KR_index_density_tuple):
 
 
 def inSphere(point, ref, radius_power2):
-    diff = np.subtract(point, ref)
+    diff = np.subtract(point, ref)  # [(x1-x2),(y1-y2), (z1-z2)]
     # print (diff)
-    dist = np.sum(np.power(diff, 2))
+    dist = np.sum(np.power(diff, 2))  # sum of square of difference
     # print (dist)
     # If dist is less than radius^2, return True, else return False
     return dist < radius_power2
+
+
+def inSphere2(ref, atoms, radius):
+    """
+    faster than inSphere, calculate multiple atoms at once
+    :param ref: reference point
+    :param atoms: atoms in the filtered cube space, 2D numpy array
+    :param radius:
+    :return: number of atoms in the sphere radius
+    """
+    ### filter surrounding atoms in a cube with equivalent radius
+    atoms = np.array(atoms) if not type(atoms) == np.ndarray else atoms
+
+    cube_edge_upper, cubu_edge_lower = np.sum([ref, [radius, radius, radius]], axis=0), \
+                                       np.sum([ref, [-radius, -radius, -radius]], axis=0)
+    # get atoms inside the cube, lower edge<atom<upper edge
+
+    filtered_atoms = [np.sum(each <= cube_edge_upper) == 3 and
+                      np.sum(each >= cubu_edge_lower) == 3 for each in atoms]
+    filtered_atoms_number = np.sum(filtered_atoms)
+    print(f'orginal number of atoms: {len(atoms)}, after filter: {filtered_atoms_number}')
+
+    filtered_atoms_coords = atoms[np.array(filtered_atoms)]
+
+    ### check if in the sphere, calculate euclidean distance
+    distance_array = np.linalg.norm(filtered_atoms_coords - np.tile(ref, [filtered_atoms_number, 1]), axis=1)
+
+    return len(np.where(distance_array <= radius)[0])
 
 
 def read_pdb_fasta(pdb_fasta):
@@ -388,6 +418,37 @@ def read_pdb_fasta(pdb_fasta):
         f_split = f.read().split('>')[1:]
         sequence = ''.join([each.split('\n')[-2] for each in f_split])
     return sequence
+
+
+def sasa_pdb(input_tuple, protease='trypsin'):
+    """
+    compute solvent accessible surface area (SASA) given a pdb file
+    :param pdb_file:
+    :return:
+    """
+    import pymol
+    from commons import expasy_rules
+    pdb_file, protein_seq = input_tuple
+    cleavage_index = [m.end() for m in re.finditer(expasy_rules[protease], protein_seq)]
+
+    # pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    # pymol.finish_launching()
+
+    pymol.cmd.set('dot_solvent', 1)
+    pymol.cmd.set('dot_density', 3)
+    pymol.cmd.set('solvent_radius', 15)
+
+    pdb_name = os.path.split(pdb_file)[1]
+    pymol.cmd.load(pdb_file, pdb_name)
+    # residues = []
+    # cmd.iterate('all', 'residues.append(resi)') # iterate residues and store into the list
+
+    residue_sasa_dict = {}
+    for i in cleavage_index:
+        residue_sasa_dict[i] = pymol.cmd.get_area('resi %s' % i)
+    pymol.cmd.delete(pdb_name)
+    print(pdb_file + ' done')
+    return {pdb_file.split('\\')[-1].split('-')[1]: residue_sasa_dict}
 
 
 if __name__ == '__main__':
@@ -477,7 +538,6 @@ if __name__ == '__main__':
     """
     ### calculate covered distance/average pLDDT and write to excel
     """
-    import pandas as pd
     df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
 
     for pep_tsv in pep_path_list:
@@ -526,7 +586,7 @@ if __name__ == '__main__':
     from pymol_test import mapping_KR_toarray
 
     df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
-    KR_density_alpha_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
+    # KR_density_alpha_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
     # chymo_cleav_density_dict = pickle.load(
     #     open('D:/data/alphafold_pdb/688_prot_chymotry_cleave_density_dict.pkl', 'rb'))
     for pep_tsv in pep_path_list:
@@ -539,21 +599,24 @@ if __name__ == '__main__':
             pdb_file_path = pdb_base + 'AF-' + prot + '-F1-model_v1.pdb'
             if os.path.exists(pdb_file_path):
                 # residue_dist_dict = residue_distance(pdb_file_reader(pdb_file_path))
-                plddt_dict = residue_plddt_retrieve(pdb_file_path)
-
+                # plddt_dict = residue_plddt_retrieve(pdb_file_path)
+                solvent_access_dict = sasa_pdb((pdb_file_path,alphafold_protein_dict[pdb_file_path.split('/')[-1]]),protease='trypsin')[prot]
                 # if len(residue_dist_dict) == len(protein_dict[prot]):  # filter out those really long proteins
-                if len(plddt_dict) == len(protein_dict[prot]):
-                    # freq_array = freq_array_dict[prot]
+                if len(alphafold_protein_dict[pdb_file_path.split('/')[-1]]) == len(protein_dict[prot]):
+                    freq_array = freq_array_dict[prot]
                     # ave_KR_density = cov_KR_density(freq_array, chymo_cleav_density_dict[prot])
+                    ave_solvent_access = cov_KR_density(freq_array,solvent_access_dict)
+                    print (f'average sasa {ave_solvent_access}')
                     # df.at[prot,pep_tsv.split('/')[-2]] = cov_dist
-                    df.at[prot, pep_tsv.split('/')[-2]] = freq_array_index_dict[prot]
+                    df.at[prot, pep_tsv.split('/')[-2]] = ave_solvent_access
+                    # df.at[prot, pep_tsv.split('/')[-2]] = freq_array_index_dict[prot]
                 else:
                     print('%s protein len between pdb and fasta is not same' % prot)
             else: 
                 continue
-    df.to_excel('D:/data/native_protein_digestion/12072021/control/cleavage_index.xlsx')
-    """
+    df.to_excel('D:/data/native_protein_digestion/12072021/control/sasa.xlsx')
 
+    """
     ### plot 3d and centroid
     """
     from matplotlib import animation
@@ -663,10 +726,11 @@ if __name__ == '__main__':
     import pickle
     from glob import glob
 
-    # pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
-    # # pdb_files = glob(pdb_path + '*F1*.pdb')
-    # pdb_files = [pdb_path+'AF-'+each+'-F1-model_v1.pdb' for each in protein_list if os.path.exists(pdb_path+'AF-'+each+'-F1-model_v1.pdb')]
-    # input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('/')[-1]]) for pdb in pdb_files]
+    pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
+    # pdb_files = glob(pdb_path + '*F1*.pdb')
+    pdb_files = [pdb_path + 'AF-' + each + '-F1-model_v1.pdb' for each in protein_list if
+                 os.path.exists(pdb_path + 'AF-' + each + '-F1-model_v1.pdb')]
+    input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('/')[-1]]) for pdb in pdb_files]
     # print (len(input_list_tuples))
     """   
     count = 0
@@ -699,3 +763,15 @@ if __name__ == '__main__':
 
     # KR_mapped_dict = mapping_KR_toarray(unique_peptide_dict[psm_path_list[1].split('/')[-2]],protein_dict)
     """
+    ### calculate solvent solvent accessible surface area
+    import multiprocessing
+
+    start = time.time()
+    with multiprocessing.Pool(multiprocessing.cpu_count() - 2) as pool:
+        result = pool.map(sasa_pdb, input_list_tuples, chunksize=50)
+        pool.close()
+        pool.join()
+    file_density_dict = {k: v for d in result for k, v in d.items()}
+
+    pickle.dump(file_density_dict, open('D:/data/alphafold_pdb/1207control_protein_KR_sasa_dict.pkl', 'wb'))
+    print(time.time() - start)
