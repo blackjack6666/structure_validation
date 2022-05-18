@@ -1,3 +1,28 @@
+#
+#                        _oo0oo_
+#                       o8888888o
+#                       88" . "88
+#                       (| -_- |)
+#                       0\  =  /0
+#                     ___/`---'\___
+#                   .' \\|     |// '.
+#                  / \\|||  :  |||// \
+#                 / _||||| -:- |||||- \
+#                |   | \\\  - /// |   |
+#                | \_|  ''\---/''  |_/ |
+#                \  .-\__  '-'  ___/-. /
+#              ___'. .'  /--.--\  `. .'___
+#           ."" '<  `.___\_<|>_/___.' >' "".
+#          | | :  `- \`.;`\ _ /`;.`/ - ` : | |
+#          \  \ `_.   \_ __\ /__ _/   .-` /  /
+#      =====`-.____`.___ \_____/___.-`___.-'=====
+#                        `=---='
+
+#      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 佛祖保佑 永无Bug
+# Buddha bless never down, never bug
+
+
 ### some functions to operate on PDB file
 
 import re
@@ -311,7 +336,7 @@ def residue_density_cal(input_tuple):
     return {alphafold_pdb_file.split('\\')[-1].split('-')[1]:(k_density_dict,r_density_dict)}
 
 
-def residue_density_cal2(input_tuple, protease='trypsin', radius=1):
+def residue_density_cal2(input_tuple, protease='trypsin', radius=6):
     """
     calculate number of atoms within certain range of a residue
     :param input_tuple:
@@ -459,6 +484,29 @@ def sasa_pdb(input_tuple, protease='trypsin'):
     return {pdb_file.split('\\')[-1].split('-')[1]: residue_sasa_dict}
 
 
+def atom_density_center(alphafold_pdb, radius: float):
+    """
+    calculate density center given a pdb structure # too slow, need to optimize
+    :param alphafold_pdb:
+    :param radius: radius of the cube
+    :return: the coordinate of density center
+    """
+    time_start = time.time()
+    residue_atom_coord_dict = pdb_file_reader(alphafold_pdb)
+    xyz_nparray = [each for v in residue_atom_coord_dict.values() for each in v]  # atom coordinates in 2D
+    result_dict = defaultdict(list)
+
+    for atom in xyz_nparray:
+        cube_edge_upper, cubu_edge_lower = np.sum([atom, [radius, radius, radius]], axis=0), \
+                                           np.sum([atom, [-radius, -radius, -radius]], axis=0)
+        filtered_atoms = [np.sum(each <= cube_edge_upper) == 3 and
+                          np.sum(each >= cubu_edge_lower) == 3 for each in xyz_nparray]
+        num_filterd_atoms = np.sum(filtered_atoms)
+        # print (num_filterd_atoms,atom)
+        result_dict[num_filterd_atoms].append(atom)
+    print(f"time used: {time.time() - time_start}")
+    return sorted(result_dict.items())
+
 if __name__ == '__main__':
     import time
     import pickle
@@ -589,7 +637,7 @@ if __name__ == '__main__':
     """
 
     ### calculate covered K/R density and write to excel
-
+    """
     import pandas as pd
     from pymol_test import mapping_KR_toarray
 
@@ -624,7 +672,7 @@ if __name__ == '__main__':
             else: 
                 continue
     df.to_excel('D:/data/native_protein_digestion/12072021/control/cov_KR_density_15A.xlsx')
-
+    """
 
     ### plot 3d and centroid
     """
@@ -735,11 +783,11 @@ if __name__ == '__main__':
     import pickle
     from glob import glob
 
-    # pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
-    # # pdb_files = glob(pdb_path + '*F1*.pdb')
-    # pdb_files = [pdb_path + 'AF-' + each + '-F1-model_v1.pdb' for each in protein_list if
-    #              os.path.exists(pdb_path + 'AF-' + each + '-F1-model_v1.pdb')]
-    # input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('/')[-1]]) for pdb in pdb_files]
+    pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
+    # pdb_files = glob(pdb_path + '*F1*.pdb')
+    pdb_files = [pdb_path + 'AF-' + each + '-F1-model_v1.pdb' for each in protein_list if
+                 os.path.exists(pdb_path + 'AF-' + each + '-F1-model_v1.pdb')]
+    input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('/')[-1]]) for pdb in pdb_files]
     # print (len(input_list_tuples))
     """   
     count = 0
@@ -756,23 +804,24 @@ if __name__ == '__main__':
 
     ### calculate residue density for each alphafold pdb, using multiple cpu cores
 
-    # import multiprocessing
-    # start = time.time()
-    # with multiprocessing.Pool(multiprocessing.cpu_count()-2) as pool:
-    #     result = pool.map(residue_density_cal2,input_list_tuples,chunksize=50)
-    #     pool.close()
-    #     pool.join()
-    # file_density_dict = {k:v for d in result for k, v in d.items()}
-    #
-    # pickle.dump(file_density_dict,open('D:/data/alphafold_pdb/1207control_trypsin_1A_cleavage_density_dict.pkl','wb'))
-    # print (time.time()-start)
+    import multiprocessing
+
+    start = time.time()
+    with multiprocessing.Pool(multiprocessing.cpu_count() - 1) as pool:
+        result = pool.map(residue_density_cal2, input_list_tuples, chunksize=50)
+        pool.close()
+        pool.join()
+    file_density_dict = {k: v for d in result for k, v in d.items()}
+
+    pickle.dump(file_density_dict, open('D:/data/alphafold_pdb/1207control_trypsin_6A_cleavage_density_dict.pkl', 'wb'))
+    print(time.time() - start)
 
     # k_r_density_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
     # print (k_r_density_dict['Q8IXR9'])
 
     # KR_mapped_dict = mapping_KR_toarray(unique_peptide_dict[psm_path_list[1].split('/')[-2]],protein_dict)
 
-    ### calculate solvent solvent accessible surface area
+    ### calculate solvent accessible surface area (sasa)
     """
     import multiprocessing
 
