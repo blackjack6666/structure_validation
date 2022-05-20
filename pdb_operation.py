@@ -336,7 +336,7 @@ def residue_density_cal(input_tuple):
     return {alphafold_pdb_file.split('\\')[-1].split('-')[1]:(k_density_dict,r_density_dict)}
 
 
-def residue_density_cal2(input_tuple, protease='trypsin', radius=6):
+def residue_density_cal2(input_tuple, protease='trypsin', radius=21):
     """
     calculate number of atoms within certain range of a residue
     :param input_tuple:
@@ -549,12 +549,12 @@ if __name__ == '__main__':
     protein_list = protein_tsv_reader(protein_tsv, protein_column=3)
     sub_protein_dict = {prot:protein_dict[prot] for prot in protein_list}
 
-    base_path = 'D:/data/native_protein_digestion/12072021/control/'
-    folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
-    time_points = [each.split('/')[-1] for each in folders]
-    pep_path_list = [each + '/peptide.tsv' for each in folders]
-    psm_path_list = [each + '/psm.tsv' for each in folders]
-    unique_peptide_dict = get_unique_peptide(pep_path_list)
+    # base_path = 'D:/data/native_protein_digestion/12072021/control/'
+    # folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
+    # time_points = [each.split('/')[-1] for each in folders]
+    # pep_path_list = [each + '/peptide.tsv' for each in folders]
+    # psm_path_list = [each + '/psm.tsv' for each in folders]
+    # unique_peptide_dict = get_unique_peptide(pep_path_list)
     # print ([(each,len(unique_peptide_dict[each])) for each in unique_peptide_dict])
     # for each in psm_path_list:
     #     psm_dict = psm_reader(each)
@@ -813,7 +813,8 @@ if __name__ == '__main__':
         pool.join()
     file_density_dict = {k: v for d in result for k, v in d.items()}
 
-    pickle.dump(file_density_dict, open('D:/data/alphafold_pdb/1207control_trypsin_6A_cleavage_density_dict.pkl', 'wb'))
+    pickle.dump(file_density_dict, open(
+        'D:/data/alphafold_pdb/trypsin_clea_atom_density/1207control_trypsin_21A_cleavage_density_dict.pkl', 'wb'))
     print(time.time() - start)
 
     # k_r_density_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))

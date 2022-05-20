@@ -14,10 +14,12 @@ from pdb_operation import atom_density_center
 # print (elements,coordinates)
 
 
-pick_result = pickle.load(open('D:/data/alphafold_pdb/1207control_protein_KR_sasa_dict.pkl', 'rb'))
-
-for each in pick_result['Q96AE4']:
-    print(each, pick_result['Q96AE4'][each])
+# pick_result = pickle.load(open('D:/data/alphafold_pdb/1207control_protein_KR_sasa_dict.pkl', 'rb'))
+#
+# for each in pick_result['Q96AE4']:
+#     print(each, pick_result['Q96AE4'][each])
     # print(each, pick_result['Q96AE4'][each], sasa.atom_areas[each])
 
 # print (atom_density_center('C:/Users/gao lab computer/Downloads/AF-Q96AE4-F1-model_v2.pdb',radius=5.0))
+pickle_2A = pickle.load(open('D:/data/alphafold_pdb/1207control_trypsin_2A_cleavage_density_dict.pkl', 'rb'))
+pickle_8A = pickle.load(open('D:/data/alphafold_pdb/1207control_trypsin_8A_cleavage_density_dict.pkl', 'rb'))
