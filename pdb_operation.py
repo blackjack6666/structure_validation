@@ -336,7 +336,7 @@ def residue_density_cal(input_tuple):
     return {alphafold_pdb_file.split('\\')[-1].split('-')[1]:(k_density_dict,r_density_dict)}
 
 
-def residue_density_cal2(input_tuple, protease='trypsin', radius=21):
+def residue_density_cal2(input_tuple, protease='trypsin', radius=23):
     """
     calculate number of atoms within certain range of a residue
     :param input_tuple:
@@ -468,8 +468,8 @@ def sasa_pdb(input_tuple, protease='trypsin'):
     # pymol.finish_launching()
 
     pymol.cmd.set('dot_solvent', 1)
-    pymol.cmd.set('dot_density', 3)
-    pymol.cmd.set('solvent_radius', 15)
+    pymol.cmd.set('dot_density', 3)  # surface area
+    pymol.cmd.set('solvent_radius', 15)  # same radius as trypsin
 
     pdb_name = os.path.split(pdb_file)[1]
     pymol.cmd.load(pdb_file, pdb_name)
@@ -814,7 +814,7 @@ if __name__ == '__main__':
     file_density_dict = {k: v for d in result for k, v in d.items()}
 
     pickle.dump(file_density_dict, open(
-        'D:/data/alphafold_pdb/trypsin_clea_atom_density/1207control_trypsin_21A_cleavage_density_dict.pkl', 'wb'))
+        'D:/data/alphafold_pdb/trypsin_clea_atom_density/1207control_trypsin_23A_cleavage_density_dict.pkl', 'wb'))
     print(time.time() - start)
 
     # k_r_density_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
