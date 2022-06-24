@@ -394,6 +394,15 @@ def dump_rep_server(name, freq_array, ptm_idx_dict, regex_color_dict, base_path,
 
 
 def pdb2json(pdb_file,base_path):
+    """
+    pre-generate pdb info. including pdb string, session info. including ret and view into json
+    so when client load 3d coverage graph on server, no Pymol API will need, only color_getter needs to be called.
+    all info. will be compiled into a HTML template to show 3d coverage
+    Save lots of time
+    :param pdb_file:
+    :param base_path:
+    :return:
+    """
     import pymol
     import json
 

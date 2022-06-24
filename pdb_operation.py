@@ -336,7 +336,7 @@ def residue_density_cal(input_tuple):
     return {alphafold_pdb_file.split('\\')[-1].split('-')[1]:(k_density_dict,r_density_dict)}
 
 
-def residue_density_cal2(input_tuple, protease='trypsin', radius=23):
+def residue_density_cal2(input_tuple, protease='trypsin', radius=29):
     """
     calculate number of atoms within certain range of a residue
     :param input_tuple:
@@ -549,7 +549,7 @@ if __name__ == '__main__':
     protein_list = protein_tsv_reader(protein_tsv, protein_column=3)
     sub_protein_dict = {prot:protein_dict[prot] for prot in protein_list}
 
-    # base_path = 'D:/data/native_protein_digestion/12072021/control/'
+    # base_path = 'F:/native_digestion/trypsin_lysc_5_25/search/'
     # folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
     # time_points = [each.split('/')[-1] for each in folders]
     # pep_path_list = [each + '/peptide.tsv' for each in folders]
@@ -603,7 +603,7 @@ if __name__ == '__main__':
 
         # if peptide_list:
         # freq_array_dict = freq_ptm_index_gen_batch_v2(peptide_list,protein_dict)[0]
-        freq_array_dict = mapping_KR_toarray(peptide_list, sub_protein_dict)
+        freq_array_dict = mapping_KR_toarray(peptide_list, sub_protein_dict)[0]
         for prot in protein_list:
             pdb_file_path = pdb_base + 'AF-' + prot + '-F1-model_v1.pdb'
             if os.path.exists(pdb_file_path):
@@ -612,9 +612,9 @@ if __name__ == '__main__':
                 if len(residue_dist_dict) == len(protein_dict[prot]):  # filter out those really long proteins
                     # if len(plddt_dict) == len(protein_dict[prot]):
                     freq_array = freq_array_dict[prot]
-                    print (np.count_nonzero(freq_array))
+                    # print (np.count_nonzero(freq_array))
                     cov_dist = cov_distance(freq_array, residue_dist_dict)
-                    print (cov_dist)
+                    # print (cov_dist)
                     # ave_cov_plddt = cov_plddt(freq_array,plddt_dict)
                     df.at[prot, pep_tsv.split('/')[-2]] = cov_dist
                     # df.at[prot,pep_tsv.split('/')[-2]] = ave_cov_plddt
@@ -625,7 +625,7 @@ if __name__ == '__main__':
         # else:
         #     for prot in protein_list:
         #         df.at[prot, pep_tsv.split('/')[-2]] = np.nan
-    df.to_excel('F:/native_digestion/chymotrypsin_4_16/search/distance.xlsx')
+    df.to_excel('F:/native_digestion/trypsin_lysc_5_25/search/distance.xlsx')
     """
     """
     
@@ -671,7 +671,7 @@ if __name__ == '__main__':
                     print('%s protein len between pdb and fasta is not same' % prot)
             else: 
                 continue
-    df.to_excel('D:/data/native_protein_digestion/12072021/control/cov_KR_density_15A.xlsx')
+    df.to_excel('F:/native_digestion/trypsin_lysc_5_25/search/cov_KR_density_15A.xlsx')
     """
 
     ### plot 3d and centroid
@@ -814,7 +814,7 @@ if __name__ == '__main__':
     file_density_dict = {k: v for d in result for k, v in d.items()}
 
     pickle.dump(file_density_dict, open(
-        'D:/data/alphafold_pdb/trypsin_clea_atom_density/1207control_trypsin_23A_cleavage_density_dict.pkl', 'wb'))
+        'D:/data/alphafold_pdb/trypsin_clea_atom_density/1207control_trypsin_29A_cleavage_density_dict.pkl', 'wb'))
     print(time.time() - start)
 
     # k_r_density_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
