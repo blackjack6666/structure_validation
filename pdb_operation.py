@@ -22,7 +22,6 @@
 # 佛祖保佑 永无Bug
 # Buddha bless never down, never bug
 
-
 ### some functions to operate on PDB file
 
 import re
