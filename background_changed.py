@@ -16,6 +16,7 @@ def show_cov_3d(peptide_list,
                 alpha=False):
     """
     show 3d coverage map based on peptide list and a protein_seq
+    output a png file
     :param peptide_list:
     :param protein_seq:
     :param pdb_file:
@@ -286,21 +287,21 @@ if __name__ == '__main__':
     # protein_to_check = [(i[0],i[1].split('-')[1]) for i in pdb_to_check if i[1].split('-')[1] in protein_list]
 
     pdb_base_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
-    base_path = 'D:/data/native_protein_digestion/12072021/control/'
-    folders = glob(base_path + '*/')
-    protein_list_chymo = protein_tsv_reader('F:/native_digestion/chymotrypsin_4_16/search/combined_protein.tsv')
-    protein_list_trypsin = protein_tsv_reader('D:/data/native_protein_digestion/12072021/control/combined_protein.tsv',
-                                              protein_column=3)
-    protein_list = [each for each in protein_list_chymo if each in protein_list_trypsin]
-    print(len(protein_list))
-
-    time_points = [each.split('\\')[-2] for each in folders]
-    print (time_points)
+    # base_path = 'D:/data/native_protein_digestion/12072021/control/'
+    # folders = glob(base_path + '*/')
+    # protein_list_chymo = protein_tsv_reader('F:/native_digestion/chymotrypsin_4_16/search/combined_protein.tsv')
+    # protein_list_trypsin = protein_tsv_reader('D:/data/native_protein_digestion/12072021/control/combined_protein.tsv',
+    #                                           protein_column=3)
+    # protein_list = [each for each in protein_list_chymo if each in protein_list_trypsin]
+    # print(len(protein_list))
+    #
+    # time_points = [each.split('\\')[-2] for each in folders]
+    # print (time_points)
 
     ### aggregate psm
-    psm_dict = {val: [psm for file in [base_path + '/' + each + '/psm.tsv' for each in time_points[:idx + 1]]
-                      for psm in modified_peptide_from_psm(file)]
-                for idx, val in enumerate(time_points)}
+    # psm_dict = {val: [psm for file in [base_path + '/' + each + '/psm.tsv' for each in time_points[:idx + 1]]
+    #                   for psm in modified_peptide_from_psm(file)]
+    #             for idx, val in enumerate(time_points)}
     # psm_dict = {time:modified_peptide_from_psm(base_path+time+'/psm.tsv') for time in time_points}
     ### unique psm
     # psm_dict = get_unique_peptide(glob(base_path + '/*/peptide.tsv'))
@@ -310,18 +311,18 @@ if __name__ == '__main__':
 
     # for each_protein in protein_to_check:
     # for each_protein in ['P10253', 'P26583', 'P27694', 'P28074', 'P30626', 'P43490', 'P78344', 'Q01813', 'Q16204', 'Q96M27', 'Q9GZZ1', 'Q9H1E3', 'Q9NPF4', 'Q9Y285', 'P41091', 'P60660', 'Q6L8Q7']:
-    for each_protein in protein_list:
-        pdb_file_name = 'AF-' + each_protein + '-F1-model_v1.pdb'
-        if os.path.exists(pdb_base_path + pdb_file_name):
-            print(each_protein)
-            for val in time_points:
-                print(val)
-                psm_list = psm_dict[val]
-                show_cov_3d(psm_list, protein_dict[each_protein], pdb_base_path + pdb_file_name,
-                            png_sava_path='F:/native_digestion/chymotrypsin_4_16/mapping_3d_trypsin_12072021/' + each_protein + '_' + val + '_trypsin.png')
-
-        else:
-            print(f"{pdb_file_name} not existed")
+    # for each_protein in protein_list:
+    #     pdb_file_name = 'AF-' + each_protein + '-F1-model_v1.pdb'
+    #     if os.path.exists(pdb_base_path + pdb_file_name):
+    #         print(each_protein)
+    #         for val in time_points:
+    #             print(val)
+    #             psm_list = psm_dict[val]
+    #             show_cov_3d(psm_list, protein_dict[each_protein], pdb_base_path + pdb_file_name,
+    #                         png_sava_path='F:/native_digestion/chymotrypsin_4_16/mapping_3d_trypsin_12072021/' + each_protein + '_' + val + '_trypsin.png')
+    #
+    #     else:
+    #         print(f"{pdb_file_name} not existed")
 
     ### map peptides to pdbs
     # for each_protein in protein_to_check:
@@ -336,12 +337,14 @@ if __name__ == '__main__':
     #                     png_sava_path='D:/data/native_protein_digestion/10282021/search_result_4miss/h20/rossetta_mapping/'
     #                                   + each_protein +'_rossetta_'+ val + '.png')
 
+    ### single protein show
     # show_cov_3d(psm_dict['02h_h2o'], protein_dict['Q96AE4'],
     #             pdb_base_path + 'AF-' + 'Q96AE4' + '-F1-model_v1.pdb', alpha=0.6,
     #             png_sava_path='D:/data/SCV/FUBP1_02h_alphafold.png')
 
-    # show_cov_3d(psm_dict['0240min'], protein_dict['P41091'], pdb_base_path + 'AF-' + 'P41091' + '-F1-model_v1.pdb',
-    #             png_sava_path='D:/data/native_protein_digestion/12072021/control/P41091_KR.png', plot_KR=True)
+    show_cov_3d(['QQAAYYAQTSPQGMPQHPPAPQGQ'], protein_dict['Q96AE4'],
+                pdb_base_path + 'AF-' + 'Q96AE4' + '-F1-model_v1.pdb',
+                png_sava_path='D:/data/chicago_mass_spec_day/FUBP_18h.png', plot_KR=False)
 
     # for i in ['1h','2h','4h','18h']:
     #     show_cov_3d(psm_dict[i],protein_dict['P61604'],pdb_base_path+'AF-P61604-F1-model_v1.pdb',
