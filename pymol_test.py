@@ -262,11 +262,12 @@ def freq_ptm_index_gen_batch_v2(psm_list, protein_dict, regex_dict=None):
     return id_freq_array_dict, id_ptm_idx_dict, [heappop(h) for i in range(len(h))][::-1]
 
 
-def mapping_KR_toarray(psm_list, protein_dict):
+def mapping_KR_toarray(psm_list, protein_dict, TMT=None):
     """
     only map the cleavage sites which are start and end of peptide
     :param psm_list:
     :param protein_dict:
+    :param TMT_:enable TMT/other quantification: dictionary with peptide as key and abundance as value
     :return:
     """
     id_KR_array_dict = {}
@@ -279,19 +280,33 @@ def mapping_KR_toarray(psm_list, protein_dict):
     separtor_pos_array = commons.separator_pos(seq_line)
 
     aho_result = automaton_matching(automaton_trie([pep for pep in psm_list]), seq_line)
+
     for tp in aho_result:
         # matched_pep = tp[2]  # without ptm site
         # print (matched_pep,seq_line[tp[0]-1],seq_line[tp[1]])
-        zero_line[tp[0]-1]+=1  # map the start and end of peptide to the array
-        zero_line[tp[1]]+=1
-    for i in range(len(separtor_pos_array)-1):
-        zero_line_slice = zero_line[separtor_pos_array[i]+1:separtor_pos_array[i+1]]
+        zero_line[tp[0] - 1] += 1  # map the start and end of peptide to the array
+        zero_line[tp[1]] += 1
+
+    for i in range(len(separtor_pos_array) - 1):
+        zero_line_slice = zero_line[separtor_pos_array[i] + 1:separtor_pos_array[i + 1]]
         # percentage_cov = np.count_nonzero(zero_line_slice)/len(zero_line_slice)*100
         # if percentage_cov != 0:
         id_KR_array_dict[id_list[i]] = zero_line_slice
         id_KR_index_dict[id_list[i]] = np.nonzero(zero_line_slice)[0]
 
-    return id_KR_array_dict, id_KR_index_dict
+    if TMT:
+        tmt_zero_line = commons.zero_line_for_seq(seq_line)
+        id_tmt_quant_dict = {}
+        for tp in aho_result:
+            matched_pep = tp[2]
+            tmt_zero_line[tp[0] - 1] += TMT[matched_pep]
+            tmt_zero_line[tp[1]] += TMT[matched_pep]
+        for i in range(len(separtor_pos_array) - 1):
+            tmt_line_slice = tmt_zero_line[separtor_pos_array[i] + 1:separtor_pos_array[i + 1]]
+            id_tmt_quant_dict[id_list[i]] = tmt_line_slice
+        return id_KR_array_dict, id_KR_index_dict, id_tmt_quant_dict
+    else:
+        return id_KR_array_dict, id_KR_index_dict
 
 
 def modified_peptide_from_psm(psm_path):
