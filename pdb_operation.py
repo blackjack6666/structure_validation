@@ -190,6 +190,25 @@ def cov_distance(freq_array,residue_dist_dict):
         return ave_dist
 
 
+def cov_distance_tmt(freq_array, tmt_quant_array, residue_dist_dict):
+    """
+    use tmt normalized intensity to calculate average distance of cleave-to-center
+    :param freq_array:
+    :param tmt_quant_array: same length as freq_array, each index has normalized intensity
+    :param residue_dist_dict:
+    :return:
+    """
+    num_nonzeros = np.count_nonzero(freq_array)
+    if num_nonzeros == 0:
+        return None
+    else:
+
+        non_zero_index = np.nonzero(freq_array)[0]
+        ave_dist = sum([residue_dist_dict[i + 1] * tmt_quant_array[i] for i in non_zero_index]) / num_nonzeros
+
+        return ave_dist
+
+
 def cov_plddt(freq_array,plddt_dict):
     """
     calculate average plddt of covered region in one protein
@@ -403,6 +422,44 @@ def cov_KR_density(mapped_KR_array,KR_index_density_tuple):
             # return sum_density/num_nonzeros
             return sum_density / mapped
 
+
+def cov_KR_density_tmt(mapped_KR_array, tmt_quant_array, KR_index_density_tuple):
+    """
+    same as cov_KR_density, use tmt int as weight factor
+    :param mapped_KR_array:
+    :param tmt_array:
+    :param KR_index_density_tuple:
+    :return:
+    """
+    if type(KR_index_density_tuple) == tuple:
+        k_density_dict, r_density_dict = KR_index_density_tuple
+        combined_density_dict = k_density_dict | r_density_dict
+    elif type(KR_index_density_tuple) == dict:
+        combined_density_dict = KR_index_density_tuple
+    else:
+        raise ValueError('index density should be a tuple of dictionary or dictionary ')
+    # print (combined_density_dict)
+    num_nonzeros = np.count_nonzero(mapped_KR_array)
+    if num_nonzeros == 0:  # no peptides mapped to such protein
+        return None
+    else:
+        non_zero_index = np.nonzero(mapped_KR_array)[0]
+        sum_density = 0
+        mapped = 0
+        for i in non_zero_index:  ## to do, could optimze by list comprehension
+            if i + 1 in combined_density_dict:  ## to do, sometimes raise bug
+                mapped += 1
+                sum_density += combined_density_dict[i + 1] * tmt_quant_array[i]
+            else:
+                print(f'{i + 1} position not in density dict')
+                # pass
+        if mapped == 0:  # if real cleavage does not map with any insilico cleavage
+            return None
+        else:
+            # return sum_density/num_nonzeros
+            return sum_density / mapped
+
+
 def inSphere(point, ref, radius_power2):
     diff = np.subtract(point, ref)  # [(x1-x2),(y1-y2), (z1-z2)]
     # print (diff)
@@ -506,6 +563,7 @@ def atom_density_center(alphafold_pdb, radius: float):
     print(f"time used: {time.time() - time_start}")
     return sorted(result_dict.items())
 
+
 if __name__ == '__main__':
     import time
     import pickle
@@ -514,7 +572,7 @@ if __name__ == '__main__':
     pdb_file = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-Q9H2X0-F1-model_v1.pdb'
     fasta_file = 'D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_tr.fasta'
     protein_dict = fasta_reader(fasta_file)
-    alphafold_protein_dict = pickle.load(open('D:/data/alphafold_pdb/human_alpha_seq_dict.p','rb'))
+    # alphafold_protein_dict = pickle.load(open('D:/data/alphafold_pdb/human_alpha_seq_dict.p','rb'))
 
     """
     time_point_rep = ['1h','2h','4h','18h']
@@ -626,6 +684,59 @@ if __name__ == '__main__':
         #         df.at[prot, pep_tsv.split('/')[-2]] = np.nan
     df.to_excel('F:/native_digestion/trypsin_lysc_5_25/search/distance.xlsx')
     """
+    ### calculate coverage distance from tmt data
+
+    tmt1 = 'F:/native_digestion/Uchicago_TMT/tmt_search_0826/TMT1/protein.tsv'
+    tmt2 = 'F:/native_digestion/Uchicago_TMT/tmt_search_0826/TMT2/protein.tsv'
+    tmt3 = 'F:/native_digestion/Uchicago_TMT/tmt_search_0826/TMT3/protein.tsv'
+    tmt_df = pd.read_csv('F:/native_digestion/Uchicago_TMT/tmt_search_0826/peptide_tmt_normalized_0_1.tsv',
+                         delimiter='\t', index_col=0)
+    tmt_protein_list = pd.read_csv(tmt1, sep='\t', index_col=0)['Protein ID'].tolist() + \
+                       pd.read_csv(tmt2, sep='\t', index_col=0)['Protein ID'].tolist() + \
+                       pd.read_csv(tmt3, sep='\t', index_col=0)['Protein ID'].tolist()
+    tmt_protein_list = set(tmt_protein_list)
+    print(len(tmt_protein_list))
+    tmt_protein_dict = {each: protein_dict[each] for each in tmt_protein_list}
+    tmt_columns = [each for each in tmt_df.columns]
+    print(tmt_columns)
+    time.sleep(3)
+    tmt_peptide_list = tmt_df.index.tolist()
+    # KR_density_alpha_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl', 'rb'))
+
+    new_df = pd.DataFrame(index=tmt_protein_list, columns=tmt_columns)
+    for column in tmt_columns:
+
+        print(column)
+        count = 0
+        TMT_int_list = tmt_df[column].tolist()
+        TMT_dict = {pep: tmt for pep, tmt in zip(tmt_peptide_list, TMT_int_list) if
+                    tmt != 0}  # filter out peptides with no intensity
+        filtered_peptide_list = [k for k in TMT_dict.keys()]
+        freq_array_dict, freq_index_dict, tmt_array_dict = mapping_KR_toarray(filtered_peptide_list, tmt_protein_dict,
+                                                                              TMT=TMT_dict)
+        for prot in tmt_protein_list:
+            # print (prot)
+            count += 1
+            print(f'{len(tmt_protein_list) - count} proteins to go in {column}')
+            pdb_file_path = pdb_base + 'AF-' + prot + '-F1-model_v1.pdb'
+            if os.path.exists(pdb_file_path):
+                residue_dist_dict = residue_distance(pdb_file_reader(pdb_file_path))
+                # plddt_dict = residue_plddt_retrieve(pdb_file_path)
+                if len(residue_dist_dict) == len(protein_dict[prot]):  # filter out those really long proteins
+                    # if len(plddt_dict) == len(protein_dict[prot]):
+                    freq_array, tmt_array = freq_array_dict[prot], tmt_array_dict[prot]
+
+                    cov_dist = cov_distance_tmt(freq_array, tmt_array, residue_dist_dict)
+                    new_df.at[prot, column] = cov_dist
+                    # ave_KR_density = cov_KR_density_tmt(freq_array,tmt_array,KR_density_alpha_dict[prot])
+                    # new_df.at[prot,column] = ave_KR_density
+                else:
+                    print('%s protein len between pdb and fasta is not same' % prot)
+            else:
+                print(f'{prot} does not have a pdb file.')
+                continue
+    new_df.to_csv('F:/native_digestion/Uchicago_TMT/tmt_search_0826/distance_tmt_weighted_0826.tsv', sep='\t')
+
     """
     
     from statistics import mean
@@ -786,7 +897,7 @@ if __name__ == '__main__':
     # pdb_files = glob(pdb_path + '*F1*.pdb')
     pdb_files = [pdb_path + 'AF-' + each + '-F1-model_v1.pdb' for each in protein_list if
                  os.path.exists(pdb_path + 'AF-' + each + '-F1-model_v1.pdb')]
-    input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('/')[-1]]) for pdb in pdb_files]
+    # input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('/')[-1]]) for pdb in pdb_files]
     # print (len(input_list_tuples))
     """   
     count = 0
@@ -803,18 +914,18 @@ if __name__ == '__main__':
 
     ### calculate residue density for each alphafold pdb, using multiple cpu cores
 
-    import multiprocessing
-
-    start = time.time()
-    with multiprocessing.Pool(multiprocessing.cpu_count() - 1) as pool:
-        result = pool.map(residue_density_cal2, input_list_tuples, chunksize=50)
-        pool.close()
-        pool.join()
-    file_density_dict = {k: v for d in result for k, v in d.items()}
-
-    pickle.dump(file_density_dict, open(
-        'D:/data/alphafold_pdb/trypsin_clea_atom_density/1207control_trypsin_29A_cleavage_density_dict.pkl', 'wb'))
-    print(time.time() - start)
+    # import multiprocessing
+    #
+    # start = time.time()
+    # with multiprocessing.Pool(multiprocessing.cpu_count() - 1) as pool:
+    #     result = pool.map(residue_density_cal2, input_list_tuples, chunksize=50)
+    #     pool.close()
+    #     pool.join()
+    # file_density_dict = {k: v for d in result for k, v in d.items()}
+    #
+    # pickle.dump(file_density_dict, open(
+    #     'D:/data/alphafold_pdb/trypsin_clea_atom_density/1207control_trypsin_29A_cleavage_density_dict.pkl', 'wb'))
+    # print(time.time() - start)
 
     # k_r_density_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
     # print (k_r_density_dict['Q8IXR9'])

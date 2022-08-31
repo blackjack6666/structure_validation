@@ -295,7 +295,7 @@ def mapping_KR_toarray(psm_list, protein_dict, TMT=None):
         id_KR_index_dict[id_list[i]] = np.nonzero(zero_line_slice)[0]
 
     if TMT:
-        tmt_zero_line = commons.zero_line_for_seq(seq_line)
+        tmt_zero_line = commons.zero_line_for_seq(seq_line, datatype=np.float32)
         id_tmt_quant_dict = {}
         for tp in aho_result:
             matched_pep = tp[2]

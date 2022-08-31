@@ -79,8 +79,9 @@ def creat_total_seq_line(seq_list, sep=None):
     seq_line = '|'.join(seq_list) if sep == '|' else ''.join(seq_list)
     return seq_line
 
-def zero_line_for_seq(seq_line):
-    zero_line = np.zeros(len(seq_line),dtype=np.int32)
+
+def zero_line_for_seq(seq_line, datatype=np.int32):
+    zero_line = np.zeros(len(seq_line), dtype=datatype)
     return zero_line
 
 # the following function create a dictionary that read each position in long sequence line as key, corresponding UNIPORT ID as value.
