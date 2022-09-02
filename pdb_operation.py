@@ -33,7 +33,7 @@ import time
 
 def pdb_file_reader(pdb_file):
     """
-    read pdb file and map xyz coordinates of each residue (alphafold pdbs)
+    read pdb file and map xyz coordinates of each residue (input: alphafold pdb or cleaned pdb from pdb_cleaner)
     :param pdb_file:
     :return:
     """
@@ -54,6 +54,28 @@ def pdb_file_reader(pdb_file):
     return residue_atom_xyz
 
 
+def pdb_cleaner(pdb_file, cleaned_pdb_file, chain):
+    """
+    clean a pdb file from RCSB, not alphafold pdbs, based on chain name,
+    cleaned pdb could be used as input in pdb_file_reader, or complex pdb could be directly read by complex_pdb_reader
+    :param pdb_file:
+    :param chain:
+    :return: a cleaned pdb only containing the selected chain
+    """
+    with open(pdb_file, 'r', newline='\n') as f_read:
+        with open(cleaned_pdb_file, 'w', newline='\n') as f_write:
+            f_write.write('\n')
+            for line in f_read:
+                if line.startswith('ATOM') and re.search('\w{3} ' + chain + ' ', line):
+                    f_write.write(line)
+                elif line.startswith('TER') and re.search('\w{3} ' + chain + ' ', line):
+                    f_write.write(line)
+                else:
+                    continue
+
+    return cleaned_pdb_file
+
+
 def pdb_mutiple_reader(pdb_file_list:list):
     """
     read alphafold pdb files corresponding to one protein, because protein too long have multiple alphafold pdb files
@@ -71,7 +93,7 @@ def pdb_mutiple_reader(pdb_file_list:list):
             residue_atom_xyz[int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group())].append([float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)])
 
 
-def complex_pdb_reader(pdb_file):
+def complex_pdb_reader(pdb_file, chain='A'):
     """
     read more complex pdb file, read each residue and 3 coordinates
     :param pdb_file:
@@ -83,32 +105,35 @@ def complex_pdb_reader(pdb_file):
     info_list = []
     with open(pdb_file,'r') as f_o:
         file_read = f_o.read()
-        file_split = file_read.split('\nATOM')[1:]
+        file_split = file_read.split('\nATOM')[1:]  # only read before first TER, e.g. only A chain
+        file_split = [l for l in file_split if re.search('\w{3} ' + chain + ' ', l)]  # filter different chain
         last_line = file_split[-1]
         if 'HETATM' in last_line:
             last_line = last_line.split('HETATM')[0]
-            # for line in file_split[:-1]:
-                # residue_atom_xyz[int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group())].append(
-                #     [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)])
             for line in file_split[:-1]:
                 if re.search(aa_reg_str,line):
-                    info_list.append((re.search(aa_reg_str,line).group(0),
+                    info_list.append(
+                        (re.search(aa_reg_str, line).group(0), int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group()),
                                       [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)]))
 
-            info_list.append((re.search(aa_reg_str,last_line).group(0),
-                              [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', last_line)]))
-            # residue_atom_xyz[int(re.search('\d+(?=\s+[+-]?\d+\.)', last_line).group())].append(
-            #     [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', last_line)])
+            # info_list.append((re.search(aa_reg_str,last_line).group(0), int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group()),
+            #                   [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', last_line)]))
+
         else:
-            # for line in file_split:
-                # residue_atom_xyz[int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group())].append(
-                #     [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)])
             for line in file_split[:-1]:
                 if re.search(aa_reg_str,line):
-                    info_list.append((re.search(aa_reg_str,line).group(0),
-                                     [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)]))
-
-    return info_list
+                    info_list.append(
+                        (re.search(aa_reg_str, line).group(0), int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group()),
+                         [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)]))
+    idx = info_list[0][1]
+    seq = aa_dict[info_list[0][0]]  # aa sequence initialize
+    for each in info_list:
+        res_pos = each[1]  # residue position
+        residue_atom_xyz[res_pos].append(each[-1])
+        if res_pos != idx:
+            seq += aa_dict[each[0]]
+            idx += 1
+    return residue_atom_xyz, seq
 
 
 def plddt_retrieve(alphafold_pdb):

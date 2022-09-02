@@ -67,10 +67,23 @@ def mut_file_gen(resi_pos_list, protein_seq, output_mut: str):
     return mutant_dict
 
 
-pdb_file = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/1dkq.pdb'
-pdb_fasta = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/rcsb_pdb_1DKQ.fasta'
-filter_resi_list = find_core_resi(pdb_file, pdb_fasta)
-mut_file_gen(filter_resi_list, read_pdb_fasta(pdb_fasta),
-             'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/mut_1dkq_081222.txt')
+if __name__ == '__main__':
+    from pdb_operation import complex_pdb_reader, read_pdb_fasta, pdb_cleaner, pdb_file_reader
+    from params import aa_dict
 
-# print (resi_sasa_dict)
+    # pdb_file = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/1dkq.pdb'
+    # pdb_fasta = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/rcsb_pdb_1DKQ.fasta'
+    # filter_resi_list = find_core_resi(pdb_file, pdb_fasta)
+    # mut_file_gen(filter_resi_list, read_pdb_fasta(pdb_fasta),
+    #              'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/mut_1dkq_081222.txt')
+
+    # print (resi_sasa_dict)
+    pdb_test = 'D:/data/pdb/pdb_human_file/2g9h.pdb'
+    pdb_clean = 'D:/data/pdb/pdb_human_file/2g9h_chainA_clean.pdb'
+    res_dict, seq = complex_pdb_reader(pdb_test, chain='A')
+    # pdb_cleaner(pdb_test,pdb_clean,chain='A')
+
+    clean_res_pos_dict = pdb_file_reader(pdb_clean)
+    print(res_dict)
+    print(clean_res_pos_dict)
+    # print (seq)

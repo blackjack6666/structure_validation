@@ -111,8 +111,8 @@ if __name__=='__main__':
     unique_2d = [[each.replace('K','K[28]') for each in peptide_2d_list[0]],
                  [each.replace('K','K[36]') for each in peptide_2d_list[1]]]
     #
-    # for each in unique_2d:
-    #     print ('\n'.join(each))
+    for each in unique_2d:
+        print('\n'.join(each))
     c_list = [[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]]
     ptm_c_list = [[0.020, 0.980, 0.050], [0.035, 0.145, 0.859]]
     show_multiple_color(unique_2d, protein_seq, alpha_fold_pdb, c_list, ptm_color_list=ptm_c_list)
