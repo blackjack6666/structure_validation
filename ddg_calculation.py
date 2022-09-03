@@ -70,6 +70,10 @@ def mut_file_gen(resi_pos_list, protein_seq, output_mut: str):
 if __name__ == '__main__':
     from pdb_operation import complex_pdb_reader, read_pdb_fasta, pdb_cleaner, pdb_file_reader
     from params import aa_dict
+    import wget
+    import pandas as pd
+    from glob import glob
+    import pickle as ppp
 
     # pdb_file = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/1dkq.pdb'
     # pdb_fasta = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/rcsb_pdb_1DKQ.fasta'
@@ -78,12 +82,47 @@ if __name__ == '__main__':
     #              'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/mut_1dkq_081222.txt')
 
     # print (resi_sasa_dict)
-    pdb_test = 'D:/data/pdb/pdb_human_file/2g9h.pdb'
+    pdb_test = 'D:/data/pdb/pdb_human_file/5xtc.pdb'
     pdb_clean = 'D:/data/pdb/pdb_human_file/2g9h_chainA_clean.pdb'
-    res_dict, seq = complex_pdb_reader(pdb_test, chain='A')
+    # res_dict, seq = complex_pdb_reader(pdb_test, chain='B')
+    # print (res_dict)
     # pdb_cleaner(pdb_test,pdb_clean,chain='A')
 
-    clean_res_pos_dict = pdb_file_reader(pdb_clean)
-    print(res_dict)
-    print(clean_res_pos_dict)
+    # clean_res_pos_dict = pdb_file_reader(pdb_clean)
+    # print(res_dict)
+    # print(clean_res_pos_dict)
     # print (seq)
+
+    # download full covered pdbs from PDB.ORG
+    df = pd.read_csv('C:/tools/seqmappdb/human/fully_covered_unique_PDB.csv')
+    download_dir = 'F:/full_cover_pdbs/'
+    # for each in df.pdbchainID.tolist():
+    #     pdb = each.split('>')[1].split('_')[0]+'.pdb'
+    #     wget.download(url='http://www.pdb.org/pdb/files/'+pdb,out=download_dir)
+
+    ### clean all downloaded pdbs based on chain name from C:/tools/seqmappdb/human/fully_covered_unique_PDB.csv
+    for each in df.pdbchainID.tolist():
+        pdb = each.split('>')[1].split('_')[0] + '.pdb'
+        print(pdb)
+        chain = each.split('_')[1]
+        pdb_file = download_dir + pdb
+        clean_pdb = download_dir + pdb.split('.pdb')[0] + '_' + chain + '_clean.pdb'
+        try:
+            pdb_cleaner(pdb_file, clean_pdb, chain)
+        except:
+            continue
+
+    # pdb_cleaner(download_dir+'5xtd.pdb',download_dir+'5xtd_d_clean.pdb','D')
+
+    ## get protein seq dictionary from pdb files
+    # pdb_seq_dict = {}
+    # for each in df.pdbchainID.tolist():
+    #     print (each)
+    #     pdb_name = each.split('>')[1].split('_')[0]
+    #     pdb = pdb_name+'.pdb'
+    #     chain = each.split('_')[1]
+    #     pdb_file = download_dir+pdb
+    #     pdb_seq = complex_pdb_reader(pdb_file,chain=chain)[1]
+    #     pdb_seq_dict[pdb_name+'_'+chain] = pdb_seq
+    # print (pdb_seq_dict)
+    # ppp.dump(pdb_seq_dict,open(download_dir+'pdb_seq_dict.p','wb'))

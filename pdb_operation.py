@@ -62,13 +62,24 @@ def pdb_cleaner(pdb_file, cleaned_pdb_file, chain):
     :param chain:
     :return: a cleaned pdb only containing the selected chain
     """
-    with open(pdb_file, 'r', newline='\n') as f_read:
+    # decide chain case sensitive
+    with open(pdb_file, 'r', newline='\n') as f_o:
+        f_string = f_o.read()
+        fstr_split = f_string.split('\nATOM')[1:]
+        filter_f_string = ''.join(fstr_split)
+
+        chain = chain if re.search('\w{3} ' + chain + ' *\d+', filter_f_string) else chain.lower()
+    # write new file
+    with open(pdb_file, 'r', newline='\n') as f_open:
         with open(cleaned_pdb_file, 'w', newline='\n') as f_write:
             f_write.write('\n')
-            for line in f_read:
-                if line.startswith('ATOM') and re.search('\w{3} ' + chain + ' ', line):
+
+            for line in f_open:
+
+                if line.startswith('ATOM') and re.search('\w{3} ' + chain + ' *\d+', line):
+
                     f_write.write(line)
-                elif line.startswith('TER') and re.search('\w{3} ' + chain + ' ', line):
+                elif line.startswith('TER') and re.search('\w{3} ' + chain + ' *\d+', line):
                     f_write.write(line)
                 else:
                     continue
@@ -106,7 +117,9 @@ def complex_pdb_reader(pdb_file, chain='A'):
     with open(pdb_file,'r') as f_o:
         file_read = f_o.read()
         file_split = file_read.split('\nATOM')[1:]  # only read before first TER, e.g. only A chain
-        file_split = [l for l in file_split if re.search('\w{3} ' + chain + ' ', l)]  # filter different chain
+        # sometimes lowercase chain name, if found no upper case, change chain to lower case
+        chain = chain if re.search('\w{3} ' + chain + ' *\d+', ''.join(file_split)) else chain.lower()
+        file_split = [l for l in file_split if re.search('\w{3} ' + chain + ' *\d+', l)]  # filter different chain
         last_line = file_split[-1]
         if 'HETATM' in last_line:
             last_line = last_line.split('HETATM')[0]
@@ -179,18 +192,21 @@ def residue_distance(residue_atom_xyz):
     """
     calculate the distance for each residue to center of 3d structure
     :param residue_atom_xyz:
+    :param start_pos: first residue start position, alphafold=1, some pdd starts with other than 1
     :return:
     """
     # zero_point = np.array([0,0,0])
     zero_point = find_centroid(residue_atom_xyz)
     residue_distance_dict = {}
+    start = 1  # treat first residue as index 1
     for each_pos in residue_atom_xyz:
 
         total_dist = sum([np.linalg.norm(np.array(each_atom)-zero_point)
                           for each_atom in residue_atom_xyz[each_pos]])
 
         average_dist = total_dist/len(residue_atom_xyz[each_pos])
-        residue_distance_dict[each_pos] = average_dist
+        residue_distance_dict[start] = average_dist
+        start += 1
     return residue_distance_dict
 
 
@@ -631,6 +647,9 @@ if __name__ == '__main__':
     protein_list = protein_tsv_reader(protein_tsv, protein_column=3)
     sub_protein_dict = {prot:protein_dict[prot] for prot in protein_list}
 
+    ### pdb protein dictionary
+
+
     # base_path = 'F:/native_digestion/trypsin_lysc_5_25/search/'
     # folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
     # time_points = [each.split('/')[-1] for each in folders]
@@ -675,7 +694,7 @@ if __name__ == '__main__':
         print(cov_dist)
     """
     ### calculate covered distance/average pLDDT and write to excel
-    """
+
     df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
 
     for pep_tsv in pep_path_list:
@@ -708,9 +727,9 @@ if __name__ == '__main__':
         #     for prot in protein_list:
         #         df.at[prot, pep_tsv.split('/')[-2]] = np.nan
     df.to_excel('F:/native_digestion/trypsin_lysc_5_25/search/distance.xlsx')
-    """
-    ### calculate coverage distance from tmt data
 
+    ### calculate coverage distance from tmt data
+    """
     tmt1 = 'F:/native_digestion/Uchicago_TMT/tmt_search_0826/TMT1/protein.tsv'
     tmt2 = 'F:/native_digestion/Uchicago_TMT/tmt_search_0826/TMT2/protein.tsv'
     tmt3 = 'F:/native_digestion/Uchicago_TMT/tmt_search_0826/TMT3/protein.tsv'
@@ -761,7 +780,7 @@ if __name__ == '__main__':
                 print(f'{prot} does not have a pdb file.')
                 continue
     new_df.to_csv('F:/native_digestion/Uchicago_TMT/tmt_search_0826/distance_tmt_weighted_0826.tsv', sep='\t')
-
+    """
     """
     
     from statistics import mean
