@@ -101,16 +101,16 @@ if __name__ == '__main__':
     #     wget.download(url='http://www.pdb.org/pdb/files/'+pdb,out=download_dir)
 
     ### clean all downloaded pdbs based on chain name from C:/tools/seqmappdb/human/fully_covered_unique_PDB.csv
-    for each in df.pdbchainID.tolist():
-        pdb = each.split('>')[1].split('_')[0] + '.pdb'
-        print(pdb)
-        chain = each.split('_')[1]
-        pdb_file = download_dir + pdb
-        clean_pdb = download_dir + pdb.split('.pdb')[0] + '_' + chain + '_clean.pdb'
-        try:
-            pdb_cleaner(pdb_file, clean_pdb, chain)
-        except:
-            continue
+    # for each in df.pdbchainID.tolist():
+    #     pdb = each.split('>')[1].split('_')[0] + '.pdb'
+    #     print(pdb)
+    #     chain = each.split('_')[1]
+    #     pdb_file = download_dir + pdb
+    #     clean_pdb = download_dir + pdb.split('.pdb')[0] + '_' + chain + '_clean.pdb'
+    #     try:
+    #         pdb_cleaner(pdb_file, clean_pdb, chain)
+    #     except:
+    #         continue
 
     # pdb_cleaner(download_dir+'5xtd.pdb',download_dir+'5xtd_d_clean.pdb','D')
 
