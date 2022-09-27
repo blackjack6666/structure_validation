@@ -19,6 +19,7 @@ aa_dict = {'ALA':'A',
            'THR':'T',
            'TRP':'W',
            'TYR':'Y',
-           'VAL':'V'}
+           'VAL': 'V',
+           'SEC': 'U'}
 
 aa_reg_str = '|'.join([key for key in aa_dict])

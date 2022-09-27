@@ -29,6 +29,8 @@ from collections import defaultdict
 from pymol_test import *
 import numpy as np
 import time
+import pickle as ppp
+from params import aa_dict, aa_reg_str
 
 
 def pdb_file_reader(pdb_file):
@@ -41,17 +43,40 @@ def pdb_file_reader(pdb_file):
         file_split = f_o.read().split('\nATOM')[1:]
 
     residue_atom_xyz = defaultdict(list)
-
+    seq = ''
+    residue_pos_start = 0
     # append xyz coords of each atom to residue position
     for line in file_split:
+
         # dont take hydrogen into account
-        if line.split('           ')[1].split('  ')[0] != 'H':
-            residue_atom_xyz[int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group())].append(
-                [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)])
+        if line.split('          ')[1].replace(' ', '') != 'H':
+            aa_code = re.search(aa_reg_str, line).group(0)
+
+            residue_pos = int(re.search('\d+(?=\w?\s+[+-]?\d+\.)', line).group())  # positive lookahead
+
+            residue_atom_xyz[residue_pos].append(
+                [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)][:3])
+            if residue_pos != residue_pos_start:
+                seq += aa_dict[aa_code]
+                residue_pos_start = residue_pos
         else:
             continue
     # print (residue_atom_xyz)
-    return residue_atom_xyz
+    return residue_atom_xyz, seq
+
+
+def reorder_pdb(residue_atom_xyz):
+    """
+    reorder residue position starting from 1
+    :param residue_atom_xyz: defaultdict(list) key order preserved as stack, returned by pdb_file_reader
+    :return:
+    """
+    new_pdb_atom_dict = {}
+    start = 1
+    for pos in residue_atom_xyz:
+        new_pdb_atom_dict[start] = residue_atom_xyz[pos]
+        start += 1
+    return new_pdb_atom_dict
 
 
 def pdb_cleaner(pdb_file, cleaned_pdb_file, chain):
@@ -68,7 +93,8 @@ def pdb_cleaner(pdb_file, cleaned_pdb_file, chain):
         fstr_split = f_string.split('\nATOM')[1:]
         filter_f_string = ''.join(fstr_split)
 
-        chain = chain if re.search('\w{3} ' + chain + ' *\d+', filter_f_string) else chain.lower()
+        chain = chain if re.search('[A-Z]{3} ' + chain + ' *\d+', filter_f_string) else chain.lower()
+
     # write new file
     with open(pdb_file, 'r', newline='\n') as f_open:
         with open(cleaned_pdb_file, 'w', newline='\n') as f_write:
@@ -76,15 +102,23 @@ def pdb_cleaner(pdb_file, cleaned_pdb_file, chain):
 
             for line in f_open:
 
-                if line.startswith('ATOM') and re.search('\w{3} ' + chain + ' *\d+', line):
-
+                if line.startswith('ATOM') and re.search('[A-Z]{3} ' + chain + ' *\d+', line):
                     f_write.write(line)
-                elif line.startswith('TER') and re.search('\w{3} ' + chain + ' *\d+', line):
+                elif line.startswith('TER') and re.search('[A-Z]{3} ' + chain + ' *\d+', line):
                     f_write.write(line)
+                    break  # only include one monomer，stop at first TER
                 else:
                     continue
 
     return cleaned_pdb_file
+
+
+def clean_pdb_reindex(cleaned_pdb_file):
+    """
+    reindex pdb file from 1, output a new cleaned
+    :param cleaned_pdb_file:
+    :return:
+    """
 
 
 def pdb_mutiple_reader(pdb_file_list:list):
@@ -110,7 +144,7 @@ def complex_pdb_reader(pdb_file, chain='A'):
     :param pdb_file:
     :return:
     """
-    from params import aa_dict,aa_reg_str
+
     residue_atom_xyz = defaultdict(list)
 
     info_list = []
@@ -118,26 +152,40 @@ def complex_pdb_reader(pdb_file, chain='A'):
         file_read = f_o.read()
         file_split = file_read.split('\nATOM')[1:]  # only read before first TER, e.g. only A chain
         # sometimes lowercase chain name, if found no upper case, change chain to lower case
-        chain = chain if re.search('\w{3} ' + chain + ' *\d+', ''.join(file_split)) else chain.lower()
-        file_split = [l for l in file_split if re.search('\w{3} ' + chain + ' *\d+', l)]  # filter different chain
-        last_line = file_split[-1]
+        chain = chain if re.search('[A-Z]{3} ' + chain + ' *\d+', ''.join(file_split)) else chain.lower()
+        # filter_file_split = [l for l in file_split if re.search('[A-Z]{3} ' + chain + ' *\d+', l)]  # filter different chain
+
+        # only include one monomer
+        filter_file_split = []
+        for l in file_split:
+
+            if re.search('[A-Z]{3} ' + chain + ' *\d+', l) and 'HETATM' not in l:
+                if '\nTER' not in l:  # get chunk before first TER
+                    filter_file_split.append(l)
+
+                else:
+                    filter_file_split.append(l.split('\nTER')[0])
+                    break
+
+        last_line = filter_file_split[-1]
         if 'HETATM' in last_line:
             last_line = last_line.split('HETATM')[0]
-            for line in file_split[:-1]:
+            for line in filter_file_split[:-1]:
                 if re.search(aa_reg_str,line):
                     info_list.append(
                         (re.search(aa_reg_str, line).group(0), int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group()),
-                                      [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)]))
+                         [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)][:3]))
 
             # info_list.append((re.search(aa_reg_str,last_line).group(0), int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group()),
             #                   [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', last_line)]))
 
         else:
-            for line in file_split[:-1]:
+            for line in filter_file_split[:-1]:
                 if re.search(aa_reg_str,line):
                     info_list.append(
                         (re.search(aa_reg_str, line).group(0), int(re.search('\d+(?=\s+[+-]?\d+\.)', line).group()),
-                         [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)]))
+                         [float(i) for i in re.findall(r'[+-]?\d+\.\d{3}', line)][:3]))
+
     idx = info_list[0][1]
     seq = aa_dict[info_list[0][0]]  # aa sequence initialize
     for each in info_list:
@@ -145,7 +193,7 @@ def complex_pdb_reader(pdb_file, chain='A'):
         residue_atom_xyz[res_pos].append(each[-1])
         if res_pos != idx:
             seq += aa_dict[each[0]]
-            idx += 1
+            idx = res_pos
     return residue_atom_xyz, seq
 
 
@@ -197,8 +245,10 @@ def residue_distance(residue_atom_xyz):
     """
     # zero_point = np.array([0,0,0])
     zero_point = find_centroid(residue_atom_xyz)
+
     residue_distance_dict = {}
     start = 1  # treat first residue as index 1
+    # print (residue_atom_xyz)
     for each_pos in residue_atom_xyz:
 
         total_dist = sum([np.linalg.norm(np.array(each_atom)-zero_point)
@@ -354,7 +404,7 @@ def residue_density_cal(input_tuple):
     r_index = [m.end() for m in re.finditer(r'R(?=[^P])', protein_seq)]
 
     residue_density_dict = {}
-    residue_atom_coord_dict = pdb_file_reader(alphafold_pdb_file)
+    residue_atom_coord_dict = pdb_file_reader(alphafold_pdb_file)[0]
     # print (residue_atom_coord_dict)
     # residue_xyz_dict = {each:np.mean(residue_atom_coord_dict[each],axis=0) for each in residue_atom_coord_dict}
     xyz_nparray = [v for v in residue_atom_coord_dict.values()]
@@ -395,7 +445,7 @@ def residue_density_cal(input_tuple):
     return {alphafold_pdb_file.split('\\')[-1].split('-')[1]:(k_density_dict,r_density_dict)}
 
 
-def residue_density_cal2(input_tuple, protease='trypsin', radius=29):
+def residue_density_cal2(input_tuple, protease='trypsin', radius=15):
     """
     calculate number of atoms within certain range of a residue
     :param input_tuple:
@@ -409,23 +459,31 @@ def residue_density_cal2(input_tuple, protease='trypsin', radius=29):
     time_start = time.time()
     alphafold_pdb_file, protein_seq = input_tuple
     cleavage_density_dict = {}
-
+    # print (alphafold_pdb_file)
     cleavage_index = [m.end() for m in re.finditer(expasy_rules[protease], protein_seq)]
-    residue_atom_coord_dict = pdb_file_reader(alphafold_pdb_file)
+    residue_atom_coord_dict = pdb_file_reader(alphafold_pdb_file)[0]
+    residue_atom_coord_dict = reorder_pdb(
+        residue_atom_coord_dict)  # optional, to reindex to start from 1 and increase continously
+
     xyz_nparray = [each for v in residue_atom_coord_dict.values() for each in v]  # 2D
 
     xyz_2d_reshape = np.reshape(xyz_nparray, (-1, 3))  # reshape atom coords into 2d array
 
     for each in cleavage_index:
+
         ref = residue_atom_coord_dict[each][-1]
         # bool_array = [inSphere(i, ref, radius*radius) for i in xyz_nparray]
         # num_resi_inrange = np.count_nonzero(bool_array)
         num_resi_inrange = inSphere2(ref, xyz_2d_reshape, radius)
         cleavage_density_dict[each] = num_resi_inrange
 
-    print(alphafold_pdb_file.split('\\')[-1].split('-')[1] + ' done.')
+    if '-' in alphafold_pdb_file:
+        key = alphafold_pdb_file.split('\\')[-1].split('-')[1]
+    else:
+        key = alphafold_pdb_file.split('/')[-1].split('.pdb')[0]
+    print(key + ' done.')
     # print (f'time used: {time.time()-time_start}')
-    return {alphafold_pdb_file.split('\\')[-1].split('-')[1]: cleavage_density_dict}
+    return {key: cleavage_density_dict}
 
 
 def cov_KR_density(mapped_KR_array,KR_index_density_tuple):
@@ -443,6 +501,7 @@ def cov_KR_density(mapped_KR_array,KR_index_density_tuple):
     else:
         raise ValueError('index density should be a tuple of dictionary or dictionary ')
     # print (combined_density_dict)
+    combined_density_dict = {int(each): combined_density_dict[each] for each in combined_density_dict}
     num_nonzeros = np.count_nonzero(mapped_KR_array)
     if num_nonzeros == 0:  # no peptides mapped to such protein
         return None
@@ -613,7 +672,7 @@ if __name__ == '__main__':
     pdb_file = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-Q9H2X0-F1-model_v1.pdb'
     fasta_file = 'D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_tr.fasta'
     protein_dict = fasta_reader(fasta_file)
-    # alphafold_protein_dict = pickle.load(open('D:/data/alphafold_pdb/human_alpha_seq_dict.p','rb'))
+    alphafold_protein_dict = pickle.load(open('D:/data/alphafold_pdb/human_alpha_seq_dict.p', 'rb'))
 
     """
     time_point_rep = ['1h','2h','4h','18h']
@@ -638,24 +697,34 @@ if __name__ == '__main__':
     # print (cov_distance(freq_array,residue_distance))
 
     """
-    pdb_base = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
+    alphafold_base = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
+    pdb_base = 'F:/full_cover_pdbs/'
     ### get unique peptide dict
 
     from commons import get_unique_peptide, psm_reader, protein_tsv_reader
 
+    df_prot_pdb = pd.read_csv('C:/tools/seqmappdb/human/fully_covered_unique_PDB.csv')
+    uniprot_pdb_dict = {prot.split('>')[1]: '_'.join(pdb.split('>')[1].split('_')[:2])
+                        for prot, pdb in zip(df_prot_pdb['queryID'], df_prot_pdb['pdbchainID'])}
     protein_tsv = 'D:/data/native_protein_digestion/12072021/control/combined_protein.tsv'
     protein_list = protein_tsv_reader(protein_tsv, protein_column=3)
     sub_protein_dict = {prot:protein_dict[prot] for prot in protein_list}
+    pdb_seq_dict = ppp.load(open('F:/full_cover_pdbs/pdb_seq_dict.p', 'rb'))
+    # sub_protein_dict = {}
+    # for prot in protein_list:
+    #     if prot in uniprot_pdb_dict:
+    #         pdb_name = uniprot_pdb_dict[prot]
+    #         sub_protein_dict[prot+'_'+pdb_name] = pdb_seq_dict[pdb_name]
+
 
     ### pdb protein dictionary
 
-
-    # base_path = 'F:/native_digestion/trypsin_lysc_5_25/search/'
-    # folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
-    # time_points = [each.split('/')[-1] for each in folders]
-    # pep_path_list = [each + '/peptide.tsv' for each in folders]
-    # psm_path_list = [each + '/psm.tsv' for each in folders]
-    # unique_peptide_dict = get_unique_peptide(pep_path_list)
+    base_path = 'D:/data/native_protein_digestion/12072021/control/'
+    folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
+    time_points = [each.split('/')[-1] for each in folders]
+    pep_path_list = [each + '/peptide.tsv' for each in folders]
+    psm_path_list = [each + '/psm.tsv' for each in folders]
+    unique_peptide_dict = get_unique_peptide(pep_path_list)
     # print ([(each,len(unique_peptide_dict[each])) for each in unique_peptide_dict])
     # for each in psm_path_list:
     #     psm_dict = psm_reader(each)
@@ -694,6 +763,7 @@ if __name__ == '__main__':
         print(cov_dist)
     """
     ### calculate covered distance/average pLDDT and write to excel
+    """
 
     df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
 
@@ -703,30 +773,38 @@ if __name__ == '__main__':
         peptide_list = unique_peptide_dict[pep_tsv.split('/')[-2]]
 
         # if peptide_list:
-        # freq_array_dict = freq_ptm_index_gen_batch_v2(peptide_list,protein_dict)[0]
         freq_array_dict = mapping_KR_toarray(peptide_list, sub_protein_dict)[0]
         for prot in protein_list:
-            pdb_file_path = pdb_base + 'AF-' + prot + '-F1-model_v1.pdb'
-            if os.path.exists(pdb_file_path):
-                residue_dist_dict = residue_distance(pdb_file_reader(pdb_file_path))
+            # pdb_file_path = alphafold_base + 'AF-' + prot + '-F1-model_v1.pdb'
+            # if os.path.exists(pdb_file_path):
+            if prot in uniprot_pdb_dict: # if prot has full pdb coverage
+                pdb_file_path = pdb_base+uniprot_pdb_dict[prot]+'_clean.pdb'
+                # print (pdb_file_path)
+                # print (pdb_seq_dict[uniprot_pdb_dict[prot]])
+                residue_dist_dict = residue_distance(pdb_file_reader(pdb_file_path)[0])
                 # plddt_dict = residue_plddt_retrieve(pdb_file_path)
-                if len(residue_dist_dict) == len(protein_dict[prot]):  # filter out those really long proteins
-                    # if len(plddt_dict) == len(protein_dict[prot]):
-                    freq_array = freq_array_dict[prot]
-                    # print (np.count_nonzero(freq_array))
-                    cov_dist = cov_distance(freq_array, residue_dist_dict)
-                    # print (cov_dist)
-                    # ave_cov_plddt = cov_plddt(freq_array,plddt_dict)
-                    df.at[prot, pep_tsv.split('/')[-2]] = cov_dist
-                    # df.at[prot,pep_tsv.split('/')[-2]] = ave_cov_plddt
-                else:
-                    print('%s protein len between pdb and fasta is not same' % prot)
+                # if len(residue_dist_dict) == len(protein_dict[prot]):  # filter out those really long proteins
+
+                # if len(plddt_dict) == len(protein_dict[prot]):
+                # freq_array = freq_array_dict[prot]
+                freq_array = freq_array_dict[prot + '_' + uniprot_pdb_dict[prot]]
+                # print (np.count_nonzero(freq_array))
+                cov_dist = cov_distance(freq_array, residue_dist_dict)
+                # print (cov_dist)
+                # ave_cov_plddt = cov_plddt(freq_array,plddt_dict)
+                df.at[prot + '_' + uniprot_pdb_dict[prot], pep_tsv.split('/')[-2]] = cov_dist
+                # df.at[prot,pep_tsv.split('/')[-2]] = ave_cov_plddt
+                # else:
+                #     print('%s protein len between pdb and fasta is not same' % prot)
             else:
+                df.at[prot, pep_tsv.split('/')[-2]] = np.nan
+                print (f'{prot} not mapped to pdb')
                 continue
         # else:
         #     for prot in protein_list:
         #         df.at[prot, pep_tsv.split('/')[-2]] = np.nan
-    df.to_excel('F:/native_digestion/trypsin_lysc_5_25/search/distance.xlsx')
+    df.to_excel('D:/data/native_protein_digestion/12072021/control/mappdb_distance.xlsx')
+    """
 
     ### calculate coverage distance from tmt data
     """
@@ -791,13 +869,14 @@ if __name__ == '__main__':
     """
 
     ### calculate covered K/R density and write to excel
-    """
+
     import pandas as pd
     from pymol_test import mapping_KR_toarray
-
+    import json
     df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
+    solven_acc_dict = json.load(open(r'F:\native_digestion\sasa_area30A_total_dict.json', 'r'))
     # solven_acc_dict = pickle.load(open('D:/data/alphafold_pdb/1207control_protein_KR_sasa_dict.pkl','rb'))
-    KR_density_alpha_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl', 'rb'))
+    # KR_density_alpha_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl', 'rb'))
     # chymo_cleav_density_dict = pickle.load(
     #     open('D:/data/alphafold_pdb/688_prot_chymotry_cleave_density_dict.pkl', 'rb'))
     for pep_tsv in pep_path_list:
@@ -807,26 +886,27 @@ if __name__ == '__main__':
         freq_array_dict, freq_array_index_dict = mapping_KR_toarray(peptide_list, sub_protein_dict)
         for prot in protein_list:
             print (prot)
-            pdb_file_path = pdb_base + 'AF-' + prot + '-F1-model_v1.pdb'
+            pdb_file_path = alphafold_base + 'AF-' + prot + '-F1-model_v1.pdb'
+
             if os.path.exists(pdb_file_path):
                 # residue_dist_dict = residue_distance(pdb_file_reader(pdb_file_path))
                 # plddt_dict = residue_plddt_retrieve(pdb_file_path)
-                # solvent_access_dict = solven_acc_dict[prot]
+                solvent_access_dict = solven_acc_dict[prot]
                 # if len(residue_dist_dict) == len(protein_dict[prot]):  # filter out those really long proteins
                 if len(alphafold_protein_dict[pdb_file_path.split('/')[-1]]) == len(protein_dict[prot]):
                     freq_array = freq_array_dict[prot]
-                    ave_KR_density = cov_KR_density(freq_array, KR_density_alpha_dict[prot])
-                    # ave_solvent_access = cov_KR_density(freq_array,solvent_access_dict)
+                    # ave_KR_density = cov_KR_density(freq_array, KR_density_alpha_dict[prot])
+                    ave_solvent_access = cov_KR_density(freq_array, solvent_access_dict)
 
-                    df.at[prot, pep_tsv.split('/')[-2]] = ave_KR_density
-                    # df.at[prot, pep_tsv.split('/')[-2]] = ave_solvent_access
+                    # df.at[prot, pep_tsv.split('/')[-2]] = ave_KR_density
+                    df.at[prot, pep_tsv.split('/')[-2]] = ave_solvent_access
                     # df.at[prot, pep_tsv.split('/')[-2]] = freq_array_index_dict[prot]
                 else:
                     print('%s protein len between pdb and fasta is not same' % prot)
             else: 
                 continue
-    df.to_excel('F:/native_digestion/trypsin_lysc_5_25/search/cov_KR_density_15A.xlsx')
-    """
+    df.to_excel('F:/native_digestion/sasa_area_30Atotal.xlsx')
+
 
     ### plot 3d and centroid
     """
