@@ -71,10 +71,10 @@ if __name__ == '__main__':
     fig, axs = plt.subplots(1, 1, figsize=(8, 8))
     for df, label, color in zip(df_list, label_list, color_list):
         df_mean = df.mean().tolist()
-        print(label, mk.original_test(df_mean))
+        # print(label, mk.original_test(df_mean))
         axs.plot(x, df_mean, linestyle='-', color=color, linewidth=4, label=label)
 
-        axs.set_xticks(x)
-        axs.set_xticklabels(list(df_1.columns), fontsize=12, ha="center", rotation=45)
+    axs.set_xticks(x)
+    axs.set_xticklabels(list(df_1.columns), fontsize=12, ha="center", rotation=45)
     axs.legend(loc='upper right')
     plt.show()
