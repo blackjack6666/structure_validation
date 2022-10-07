@@ -1,3 +1,6 @@
+"""
+calculate some index (distance, density, solvent accessibility area) for uniprot-mapped pdb files
+"""
 from pdb_operation import read_pdb_fasta, pdb_file_reader
 import pymol
 import os
@@ -74,6 +77,7 @@ if __name__ == '__main__':
     import pandas as pd
     from glob import glob
     import pickle as ppp
+    import json
 
     # pdb_file = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/1dkq.pdb'
     # pdb_fasta = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/rcsb_pdb_1DKQ.fasta'
@@ -96,7 +100,7 @@ if __name__ == '__main__':
     # print (seq)
 
     # download full covered pdbs from PDB.ORG
-    df = pd.read_csv('C:/tools/seqmappdb/human/fully_covered_unique_PDB.csv')
+    # df = pd.read_csv('C:/tools/seqmappdb/human/fully_covered_unique_PDB.csv')
     download_dir = 'F:/full_cover_pdbs/'
     # for each in df.pdbchainID.tolist():
     #     pdb = each.split('>')[1].split('_')[0]+'.pdb'
@@ -152,13 +156,13 @@ if __name__ == '__main__':
     protein_list = protein_tsv_reader(protein_tsv, protein_column=3)
 
     print(len([k for k in pdb_seq_dict]))
-    # sub_protein_dict = {}
-    # for prot in protein_list:
-    #     if prot in uniprot_pdb_dict:
-    #         pdb_name = uniprot_pdb_dict[prot]
-    #         sub_protein_dict[prot + '_' + pdb_name] = pdb_seq_dict[pdb_name]
-    #
-    """
+    sub_protein_dict = {}
+    for prot in protein_list:
+        if prot in uniprot_pdb_dict:
+            pdb_name = uniprot_pdb_dict[prot]
+            sub_protein_dict[prot + '_' + pdb_name] = pdb_seq_dict[pdb_name]
+
+
     base_path = 'D:/data/native_protein_digestion/12072021/control/'
     folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
     time_points = [each.split('/')[-1] for each in folders]
@@ -166,7 +170,9 @@ if __name__ == '__main__':
     psm_path_list = [each + '/psm.tsv' for each in folders]
     unique_peptide_dict = get_unique_peptide(pep_path_list)
     df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
-    density_dict = ppp.load(open('F:/full_cover_pdbs/mapped_pdb_15A_KR_density.pkl','rb'))
+    # density_dict = ppp.load(open('F:/full_cover_pdbs/mapped_pdb_15A_KR_density.pkl','rb'))
+    sasa_dict = json.load(
+        open(r'F:\native_digestion\Accessible region\sasa_area15A_dict_pdb.json', 'r'))  # from bowei's data
 
     for pep_tsv in pep_path_list:
         print(pep_tsv)
@@ -177,7 +183,7 @@ if __name__ == '__main__':
             print(prot)
 
             if prot in uniprot_pdb_dict:  # if prot has full pdb coverage
-                pdb_name = uniprot_pdb_dict[prot]
+                pdb_name = uniprot_pdb_dict[prot]  # pdbid_chain
                 pdb_file_path = pdb_base + pdb_name + '_clean.pdb'
                 # print (pdb_file_path)
                 pdb_seq = sub_protein_dict[prot+'_'+pdb_name]
@@ -187,11 +193,11 @@ if __name__ == '__main__':
                 # plddt_dict = residue_plddt_retrieve(pdb_file_path)
 
                 freq_array = freq_array_dict[prot + '_' + pdb_name]
-
-                ave_KR_density = cov_KR_density(freq_array, density_dict[pdb_name+'_clean'])
+                # ave_KR_density = cov_KR_density(freq_array, density_dict[pdb_name+'_clean'])
+                ave_sasa = cov_KR_density(freq_array, sasa_dict[pdb_name]) if pdb_name in sasa_dict else np.nan
                 # print (cov_dist)
                 # ave_cov_plddt = cov_plddt(freq_array,plddt_dict)
-                df.at[prot + '_' + uniprot_pdb_dict[prot], pep_tsv.split('/')[-2]] = ave_KR_density
+                df.at[prot + '_' + uniprot_pdb_dict[prot], pep_tsv.split('/')[-2]] = ave_sasa
                 # df.at[prot,pep_tsv.split('/')[-2]] = ave_cov_plddt
                 # else:
                 #     print('%s protein len between pdb and fasta is not same' % prot)
@@ -199,9 +205,10 @@ if __name__ == '__main__':
                 df.at[prot, pep_tsv.split('/')[-2]] = np.nan
                 print(f'{prot} not mapped to pdb')
                 continue
-    df.to_excel('D:/data/native_protein_digestion/12072021/control/mappdb_KR_density_15A.xlsx')
-    """
+    df.to_excel('D:/data/native_protein_digestion/12072021/control/mappdb_KR_sasa_15A.xlsx')
+
     ### calculation for pdbs
+    """
     import multiprocessing
     from glob import glob
     import time
@@ -221,3 +228,4 @@ if __name__ == '__main__':
     print(time.time() - start)
 
     # residue_density_cal2(('F:/full_cover_pdbs/1KWM_B_clean.pdb',pdb_seq_dict['1KWM_B']))
+    """
