@@ -445,7 +445,7 @@ def residue_density_cal(input_tuple):
     return {alphafold_pdb_file.split('\\')[-1].split('-')[1]:(k_density_dict,r_density_dict)}
 
 
-def residue_density_cal2(input_tuple, protease='trypsin', radius=15):
+def residue_density_cal2(input_tuple, protease=('trypsin', 'chymotrypsin high specificity'), radius=15):
     """
     calculate number of atoms within certain range of a residue
     :param input_tuple:
@@ -460,7 +460,15 @@ def residue_density_cal2(input_tuple, protease='trypsin', radius=15):
     alphafold_pdb_file, protein_seq = input_tuple
     cleavage_density_dict = {}
     # print (alphafold_pdb_file)
-    cleavage_index = [m.end() for m in re.finditer(expasy_rules[protease], protein_seq)]
+    if type(protease) == str:
+        cleavage_index = [m.end() for m in re.finditer(expasy_rules[protease], protein_seq)]
+    elif type(protease) == tuple:
+        cleavage_index = []
+        for p in protease:
+            cleavage_index += [m.end() for m in re.finditer(expasy_rules[p], protein_seq)]
+    else:
+        raise KeyError(
+            'Protease should either be a string such as "trypsin" or a list such as ["trypsin", "chymotrypsin"]')
     residue_atom_coord_dict = pdb_file_reader(alphafold_pdb_file)[0]
     residue_atom_coord_dict = reorder_pdb(
         residue_atom_coord_dict)  # optional, to reindex to start from 1 and increase continously
@@ -719,12 +727,12 @@ if __name__ == '__main__':
 
     ### pdb protein dictionary
 
-    base_path = 'D:/data/native_protein_digestion/12072021/control/'
-    folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
-    time_points = [each.split('/')[-1] for each in folders]
-    pep_path_list = [each + '/peptide.tsv' for each in folders]
-    psm_path_list = [each + '/psm.tsv' for each in folders]
-    unique_peptide_dict = get_unique_peptide(pep_path_list)
+    # base_path = 'D:/data/native_protein_digestion/12072021/control/'
+    # folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
+    # time_points = [each.split('/')[-1] for each in folders]
+    # pep_path_list = [each + '/peptide.tsv' for each in folders]
+    # psm_path_list = [each + '/psm.tsv' for each in folders]
+    # unique_peptide_dict = get_unique_peptide(pep_path_list)
     # print ([(each,len(unique_peptide_dict[each])) for each in unique_peptide_dict])
     # for each in psm_path_list:
     #     psm_dict = psm_reader(each)
@@ -806,24 +814,27 @@ if __name__ == '__main__':
     df.to_excel('D:/data/native_protein_digestion/12072021/control/mappdb_distance.xlsx')
     """
 
-    ### calculate coverage distance from tmt data
-    """
+    ### calculate coverage distance/density from tmt data
+
     tmt1 = 'F:/native_digestion/Uchicago_TMT/tmt_search_0826/TMT1/protein.tsv'
     tmt2 = 'F:/native_digestion/Uchicago_TMT/tmt_search_0826/TMT2/protein.tsv'
     tmt3 = 'F:/native_digestion/Uchicago_TMT/tmt_search_0826/TMT3/protein.tsv'
-    tmt_df = pd.read_csv('F:/native_digestion/Uchicago_TMT/tmt_search_0826/peptide_tmt_normalized_0_1.tsv',
+    tmt_df = pd.read_csv('F:/native_digestion/Uchicago_TMT/tmt_search_0826/peptide_tmt_normalized_combined_0_1.tsv',
                          delimiter='\t', index_col=0)
     tmt_protein_list = pd.read_csv(tmt1, sep='\t', index_col=0)['Protein ID'].tolist() + \
                        pd.read_csv(tmt2, sep='\t', index_col=0)['Protein ID'].tolist() + \
                        pd.read_csv(tmt3, sep='\t', index_col=0)['Protein ID'].tolist()
     tmt_protein_list = set(tmt_protein_list)
+
     print(len(tmt_protein_list))
     tmt_protein_dict = {each: protein_dict[each] for each in tmt_protein_list}
     tmt_columns = [each for each in tmt_df.columns]
     print(tmt_columns)
     time.sleep(3)
     tmt_peptide_list = tmt_df.index.tolist()
-    # KR_density_alpha_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl', 'rb'))
+    KR_density_alpha_dict = pickle.load(
+        open('D:/data/alphafold_pdb/trypsin_clea_atom_density/tmt_tryp_chymo_15A_cleavage_density_dict.pkl', 'rb'))
+
 
     new_df = pd.DataFrame(index=tmt_protein_list, columns=tmt_columns)
     for column in tmt_columns:
@@ -840,25 +851,27 @@ if __name__ == '__main__':
             # print (prot)
             count += 1
             print(f'{len(tmt_protein_list) - count} proteins to go in {column}')
-            pdb_file_path = pdb_base + 'AF-' + prot + '-F1-model_v1.pdb'
+
+            pdb_file_path = alphafold_base + 'AF-' + prot + '-F1-model_v1.pdb'
             if os.path.exists(pdb_file_path):
-                residue_dist_dict = residue_distance(pdb_file_reader(pdb_file_path))
+                # residue_dist_dict = residue_distance(pdb_file_reader(pdb_file_path)[0])
                 # plddt_dict = residue_plddt_retrieve(pdb_file_path)
-                if len(residue_dist_dict) == len(protein_dict[prot]):  # filter out those really long proteins
+                # if len(residue_dist_dict) == len(protein_dict[prot]):  # filter out those really long proteins
+                if len(alphafold_protein_dict[pdb_file_path.split('/')[-1]]) == len(protein_dict[prot]):
                     # if len(plddt_dict) == len(protein_dict[prot]):
                     freq_array, tmt_array = freq_array_dict[prot], tmt_array_dict[prot]
 
-                    cov_dist = cov_distance_tmt(freq_array, tmt_array, residue_dist_dict)
-                    new_df.at[prot, column] = cov_dist
-                    # ave_KR_density = cov_KR_density_tmt(freq_array,tmt_array,KR_density_alpha_dict[prot])
-                    # new_df.at[prot,column] = ave_KR_density
+                    # cov_dist = cov_distance_tmt(freq_array, tmt_array, residue_dist_dict)
+                    # new_df.at[prot, column] = cov_dist
+                    ave_KR_density = cov_KR_density_tmt(freq_array, tmt_array, KR_density_alpha_dict[prot])
+                    new_df.at[prot, column] = ave_KR_density
                 else:
                     print('%s protein len between pdb and fasta is not same' % prot)
             else:
                 print(f'{prot} does not have a pdb file.')
                 continue
-    new_df.to_csv('F:/native_digestion/Uchicago_TMT/tmt_search_0826/distance_tmt_weighted_0826.tsv', sep='\t')
-    """
+    new_df.to_csv('F:/native_digestion/Uchicago_TMT/tmt_search_0826/density_tmt_weighted_combined_1018.tsv', sep='\t')
+
     """
     
     from statistics import mean
@@ -869,7 +882,7 @@ if __name__ == '__main__':
     """
 
     ### calculate covered K/R density and write to excel
-
+    """
     import pandas as pd
     from pymol_test import mapping_KR_toarray
     import json
@@ -906,7 +919,7 @@ if __name__ == '__main__':
             else: 
                 continue
     df.to_excel('F:/native_digestion/sasa_area_30Atotal.xlsx')
-
+    """
 
     ### plot 3d and centroid
     """
@@ -1019,7 +1032,7 @@ if __name__ == '__main__':
 
     pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
     # pdb_files = glob(pdb_path + '*F1*.pdb')
-    pdb_files = [pdb_path + 'AF-' + each + '-F1-model_v1.pdb' for each in protein_list if
+    pdb_files = [pdb_path + 'AF-' + each + '-F1-model_v1.pdb' for each in tmt_protein_list if
                  os.path.exists(pdb_path + 'AF-' + each + '-F1-model_v1.pdb')]
     # input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('/')[-1]]) for pdb in pdb_files]
     # print (len(input_list_tuples))
@@ -1048,12 +1061,12 @@ if __name__ == '__main__':
     # file_density_dict = {k: v for d in result for k, v in d.items()}
     #
     # pickle.dump(file_density_dict, open(
-    #     'D:/data/alphafold_pdb/trypsin_clea_atom_density/1207control_trypsin_29A_cleavage_density_dict.pkl', 'wb'))
+    #     'D:/data/alphafold_pdb/trypsin_clea_atom_density/tmt_tryp_chymo_15A_cleavage_density_dict.pkl', 'wb'))
     # print(time.time() - start)
 
     # k_r_density_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
     # print (k_r_density_dict['Q8IXR9'])
-
+    #
     # KR_mapped_dict = mapping_KR_toarray(unique_peptide_dict[psm_path_list[1].split('/')[-2]],protein_dict)
 
     ### calculate solvent accessible surface area (sasa)

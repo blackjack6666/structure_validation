@@ -195,10 +195,8 @@ if __name__ == '__main__':
                 freq_array = freq_array_dict[prot + '_' + pdb_name]
                 # ave_KR_density = cov_KR_density(freq_array, density_dict[pdb_name+'_clean'])
                 ave_sasa = cov_KR_density(freq_array, sasa_dict[pdb_name]) if pdb_name in sasa_dict else np.nan
-                # print (cov_dist)
-                # ave_cov_plddt = cov_plddt(freq_array,plddt_dict)
                 df.at[prot + '_' + uniprot_pdb_dict[prot], pep_tsv.split('/')[-2]] = ave_sasa
-                # df.at[prot,pep_tsv.split('/')[-2]] = ave_cov_plddt
+
                 # else:
                 #     print('%s protein len between pdb and fasta is not same' % prot)
             else:
