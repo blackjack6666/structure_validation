@@ -1,5 +1,6 @@
 """
 calculate some index (distance, density, solvent accessibility area) for uniprot-mapped pdb files
+calculate shape of protein structure based on pdb file
 """
 from pdb_operation import read_pdb_fasta, pdb_file_reader
 import pymol
@@ -70,6 +71,74 @@ def mut_file_gen(resi_pos_list, protein_seq, output_mut: str):
     return mutant_dict
 
 
+def structure_volume(pdb_file):
+    """
+    calculate the structure volume given a pdb file, by projecting onto a 3D grid, and calculate how many grid points
+    being occupied
+    :param pdb_file:
+    :return:
+    """
+    import itertools
+    protein_cood_dict = pdb_file_reader(pdb_file)[0]
+    normalized_protein_coord_dict = {}
+
+    # numpy array the atom coordinates
+    np_coord_array = np.array([each for each_2d in protein_cood_dict.values() for each in each_2d])
+
+    # get x, y, z range
+    x_diff, y_diff, z_diff = [(i - j, j) for i, j in
+                              zip(np.max(np_coord_array, axis=0), np.min(np_coord_array, axis=0))]
+    print(x_diff, y_diff, z_diff)
+    # coordinate range
+    # coord_range = [int(x_diff[0]*10), int(y_diff[0]*10), int(z_diff[0]*10)]
+    coord_range = [int(x_diff[0]), int(y_diff[0]), int(z_diff[0])]  # 3d range
+
+    # a 3d grid to project protein structure
+    prot_3d_array = np.zeros((coord_range[0] + 1, coord_range[1] + 1, coord_range[2] + 1), dtype=np.int8)
+
+    total_volume = coord_range[0] * coord_range[1] * coord_range[2]
+
+    # normalize x y z coordinates
+    for _ in np_coord_array:
+        x, y, z = _
+        # print(x,y,z)
+        new_x, new_y, new_z = int((x - x_diff[1])), int((y - y_diff[1])), int((z - z_diff[1]))
+        # print(new_x, new_y, new_z)
+        # normalized_protein_coord_dict[_] = (new_x, new_y, new_z)
+        prot_3d_array[new_x - 1:new_x + 1, new_y - 1:new_y + 1,
+        new_z - 1:new_z + 1] += 1  # also add surrounding of each atom
+
+    volume = np.count_nonzero(prot_3d_array)  # number of grid points occupied by atoms
+    density = volume / total_volume  # percentage of protein occupied grid points to total number of grid points in a cube
+    print(volume, density)
+    return volume, density
+
+
+def shape_difference(pdb_file):
+    """
+    tell the shape of protein structure by pdb coordinates, if it's linearized
+    :param pdb_file:
+    :return:
+    """
+    protein_cood_dict = pdb_file_reader(pdb_file)[0]
+    normalized_protein_coord_dict = {}
+
+    # numpy array the atom coordinates
+    np_coord_array = np.array([each for each_2d in protein_cood_dict.values() for each in each_2d])
+
+    # get x, y, z range
+    x_diff, y_diff, z_diff = [(i - j, j) for i, j in
+                              zip(np.max(np_coord_array, axis=0), np.min(np_coord_array, axis=0))]
+    # print(x_diff, y_diff, z_diff)
+    # check the ratio of each axis
+    range_divide = [x_diff[0] / y_diff[0], x_diff[0] / z_diff[0], y_diff[0] / z_diff[0]]
+    linear = False
+    for each in range_divide:
+        if each >= 3 or each <= 1 / 3:  # if one axis is 3 times longer than the other, it looks like linear
+            linear = True
+    return linear
+
+
 if __name__ == '__main__':
     from pdb_operation import complex_pdb_reader, read_pdb_fasta, pdb_cleaner, pdb_file_reader
     from params import aa_dict
@@ -78,6 +147,13 @@ if __name__ == '__main__':
     from glob import glob
     import pickle as ppp
     import json
+
+    # structure_volume(r'D:\data\alphafold_pdb\UP000005640_9606_HUMAN/AF-Q8IZU0-F1-model_v1.pdb')
+    for each in glob('D:/data/alphafold_pdb/UP000005640_9606_HUMAN/*.pdb'):
+
+        linear = shape_difference(each)
+        if linear:
+            print(each.split('-')[1])
 
     # pdb_file = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/1dkq.pdb'
     # pdb_fasta = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/rcsb_pdb_1DKQ.fasta'
@@ -141,7 +217,7 @@ if __name__ == '__main__':
     pdb_seq_dict = ppp.load(open('F:/full_cover_pdbs/pdb_seq_dict.p', 'rb'))
 
     ## computation on pdb file, distance, density and sasa
-
+    """
     from commons import protein_tsv_reader, get_unique_peptide
     from pymol_test import mapping_KR_toarray
     import pickle
@@ -204,6 +280,7 @@ if __name__ == '__main__':
                 print(f'{prot} not mapped to pdb')
                 continue
     df.to_excel('D:/data/native_protein_digestion/12072021/control/mappdb_KR_sasa_15A.xlsx')
+    """
 
     ### calculation for pdbs
     """
