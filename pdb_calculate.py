@@ -7,6 +7,9 @@ import pymol
 import os
 import numpy as np
 from collections import defaultdict
+import matplotlib.pyplot as plt
+import pandas as pd
+import time
 
 
 def find_core_resi(pdb_file, pdb_fasta_file):
@@ -88,7 +91,7 @@ def structure_volume(pdb_file):
     # get x, y, z range
     x_diff, y_diff, z_diff = [(i - j, j) for i, j in
                               zip(np.max(np_coord_array, axis=0), np.min(np_coord_array, axis=0))]
-    print(x_diff, y_diff, z_diff)
+    # print(x_diff, y_diff, z_diff)
     # coordinate range
     # coord_range = [int(x_diff[0]*10), int(y_diff[0]*10), int(z_diff[0]*10)]
     coord_range = [int(x_diff[0]), int(y_diff[0]), int(z_diff[0])]  # 3d range
@@ -110,7 +113,7 @@ def structure_volume(pdb_file):
 
     volume = np.count_nonzero(prot_3d_array)  # number of grid points occupied by atoms
     density = volume / total_volume  # percentage of protein occupied grid points to total number of grid points in a cube
-    print(volume, density)
+    # print(volume, density)
     return volume, density
 
 
@@ -139,6 +142,93 @@ def shape_difference(pdb_file):
     return linear
 
 
+def angle(directions):
+    """Return the angle between vectors
+    """
+    vec2 = directions[1:]
+    vec1 = directions[:-1]
+
+    norm1 = np.sqrt((vec1 ** 2).sum(axis=1))
+    norm2 = np.sqrt((vec2 ** 2).sum(axis=1))
+    cos = (vec1 * vec2).sum(axis=1) / (norm1 * norm2)
+    return np.arccos(cos)
+
+
+def fit_into_function(array_2d, proteinid='XXX', save_path=None):
+    """
+    fit a distance/sasa array into function and decide number of turning points, first time of turning points
+    :param array_2d: array-like trend, time series
+    :return:
+    """
+    from rdp import rdp
+    x, y = zip(*array_2d)
+
+    simplified_trajectory = rdp(array_2d, epsilon=1)
+    sx, sy = np.array(simplified_trajectory).T
+    # Visualize trajectory and its simplified version.
+    # Define a minimum angle to treat change in direction
+    # as significant (valuable turning point).
+    min_angle = np.pi / 3
+
+    # Compute the direction vectors on the simplified_trajectory.
+    directions = np.diff(simplified_trajectory, axis=0)
+    # print (simplified_trajectory)
+    theta = angle(directions)
+    # print (theta)
+    # Select the index of the points with the greatest theta.
+    # Large theta is associated with greatest change in direction.
+    idx = np.where(theta > min_angle)[0] + 1
+    turning_points = sx[idx], sy[idx]
+
+    # get first turning point (potentially unfolding time point)
+    first_turning_point = sx[idx[0]] if len(idx) != 0 else 'monotonic'
+
+    # Visualize valuable turning points on the simplified trjectory.
+    if save_path:
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.plot(x, y, 'kx-', label='original data')
+        ax.plot(sx, sy, 'gx-', label='simplified trajectory')
+        ax.plot(sx[idx], sy[idx], 'ro', markersize=7, label='turning points')
+        ax.set_xlabel("time point")
+        ax.set_ylabel("atom density")
+        ax.set_title(proteinid)
+        ax.legend(loc='best')
+        print(f'saving figure to {save_path + proteinid}atom_dens.png ...')
+        plt.savefig(save_path + proteinid + 'atom_dens.png')
+        plt.close()
+    # plt.show()
+    return turning_points, first_turning_point
+
+
+def batch_analysis_turning_point(df: pd.DataFrame, df_output='turning_point.tsv'):
+    """
+    correlate first turning point with density of structure
+    :param df: pd dataframe with uniprot id as index, time points as columns, values are distance/sasa, etc
+    :return:
+    """
+    np_array = df.to_numpy()
+    ind_list = df.index.tolist()
+    time_points = np.array([1, 2, 3, 4, 5, 6, 7])
+    new_df = pd.DataFrame(index=ind_list, columns=['first turning point'])
+
+    for prot, trend in zip(ind_list, np_array):
+        nan_boolearn = np.isnan(trend)
+        num_nan = np.count_nonzero(nan_boolearn)  # count number of nan
+        if num_nan <= 3:  # if nan data is less than 3
+            print(prot)
+            non_nan = trend[~nan_boolearn]
+            non_nan_idx = np.argwhere(~nan_boolearn).flatten()
+            non_nan_times = time_points[non_nan_idx]
+            array_2d = list(zip(non_nan_times, non_nan))
+            first_turn = fit_into_function(array_2d, prot)[1]
+            new_df.loc[prot, 'first turning point'] = first_turn
+            # print (num_nan,trend, trend[~nan_boolearn], np.argwhere(~nan_boolearn).flatten())
+        else:
+            continue
+    new_df.to_csv(df_output, sep='\t')
+
+
 if __name__ == '__main__':
     from pdb_operation import complex_pdb_reader, read_pdb_fasta, pdb_cleaner, pdb_file_reader
     from params import aa_dict
@@ -148,12 +238,30 @@ if __name__ == '__main__':
     import pickle as ppp
     import json
 
-    # structure_volume(r'D:\data\alphafold_pdb\UP000005640_9606_HUMAN/AF-Q8IZU0-F1-model_v1.pdb')
-    for each in glob('D:/data/alphafold_pdb/UP000005640_9606_HUMAN/*.pdb'):
+    # structure_volume(r'D:\data\alphafold_pdb\UP000005640_9606_HUMAN/AF-P04075-F1-model_v1.pdb')
 
-        linear = shape_difference(each)
-        if linear:
-            print(each.split('-')[1])
+    # pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
+    # protein_list = pd.read_excel('D:/data/native_protein_digestion/12072021/control/cov_dist_unique.xlsx',index_col=0).index
+    # pdb_files = [pdb_path + 'AF-' + each + '-F1-model_v1.pdb' for each in protein_list if
+    #              os.path.exists(pdb_path + 'AF-' + each + '-F1- .pdb')]
+    #
+    # for each in pdb_files:
+    #
+    #     linear = shape_difference(each)
+    #     if linear:
+    #         print(each.split('-')[1])
+    # array2d = [[1,168.5],[2,266.6666667],[3,210.8888889],[4,221.5],[5,np.nan],[6,255.5]]
+    # fit_into_function(array2d)
+
+    # density_df = pd.read_excel('D:/data/native_protein_digestion/12072021/control/cov_KR_density_15A.xlsx',index_col=0)
+    # batch_analysis_turning_point(density_df,df_output='D:/data/native_protein_digestion/12072021/turning_points/first_turn.tsv')
+    # turning_df = pd.read_csv('D:/data/native_protein_digestion/12072021/turning_points/first_turn.tsv',index_col=0,delimiter='\t')
+    # turning_df1 = turning_df.dropna()
+    # for prot,turn in zip(turning_df1.index, turning_df1['first turning point'].tolist()):
+    #     print (prot)
+    #     density = structure_volume('D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-'+prot+'-F1-model_v1.pdb')[1]
+    #     turning_df.loc[prot,'density'] = density
+    # turning_df.to_csv('D:/data/native_protein_digestion/12072021/turning_points/first_turn_structure_density.tsv',sep='\t')
 
     # pdb_file = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/1dkq.pdb'
     # pdb_fasta = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/rcsb_pdb_1DKQ.fasta'
