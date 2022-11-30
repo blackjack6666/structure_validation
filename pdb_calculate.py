@@ -229,6 +229,28 @@ def batch_analysis_turning_point(df: pd.DataFrame, df_output='turning_point.tsv'
     new_df.to_csv(df_output, sep='\t')
 
 
+def mobidb_data_clean(data_frame: pd.DataFrame):
+    """
+    clean data curated from mobidb
+    :param data_frame: tsv file from https://mobidb.org/
+    :return:
+    """
+    prot_list = data_frame['acc'].unique()
+    prot_disorder_dict = {}
+    for prot in prot_list:
+        sub_df = data_frame[data_frame['acc'] == prot]
+
+        if 'curated-disorder-priority' in sub_df['feature'].tolist():
+            disorder_fraction = float(sub_df[sub_df['feature'] == 'curated-disorder-priority']['content_fraction'])
+        elif 'prediction-disorder-priority' in sub_df['feature'].tolist():
+            disorder_fraction = float(sub_df[sub_df['feature'] == 'prediction-disorder-priority']['content_fraction'])
+        else:
+            disorder_fraction = 0
+        print(prot, disorder_fraction)
+        prot_disorder_dict[prot] = disorder_fraction
+    return prot_disorder_dict
+
+
 if __name__ == '__main__':
     from pdb_operation import complex_pdb_reader, read_pdb_fasta, pdb_cleaner, pdb_file_reader
     from params import aa_dict
@@ -257,11 +279,22 @@ if __name__ == '__main__':
     # batch_analysis_turning_point(density_df,df_output='D:/data/native_protein_digestion/12072021/turning_points/first_turn.tsv')
     # turning_df = pd.read_csv('D:/data/native_protein_digestion/12072021/turning_points/first_turn.tsv',index_col=0,delimiter='\t')
     # turning_df1 = turning_df.dropna()
+    # valid_prot_list = turning_df1.index.tolist()
+    # url_str = 'https://mobidb.org/api/download?format=tsv&projection=&acc='+'%2C'.join(valid_prot_list)+'&proteome=UP000005640'
+    # print (url_str)
+    # prot_disorder_dict = mobidb_data_clean(pd.read_csv('D:/data/native_protein_digestion/12072021/control/mobidb_result_2022-11-22T17_27_51.911Z.tsv',sep='\t'))
+
     # for prot,turn in zip(turning_df1.index, turning_df1['first turning point'].tolist()):
-    #     print (prot)
     #     density = structure_volume('D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-'+prot+'-F1-model_v1.pdb')[1]
-    #     turning_df.loc[prot,'density'] = density
-    # turning_df.to_csv('D:/data/native_protein_digestion/12072021/turning_points/first_turn_structure_density.tsv',sep='\t')
+    # turning_df.loc[prot,'density'] = density
+    # disorder_fraction = prot_disorder_dict[prot]
+    # turning_df1.loc[prot, 'disorder fraction'] = disorder_fraction
+
+    # turning_df1.to_csv('D:/data/native_protein_digestion/12072021/turning_points/first_turn_disorder_nadrop.tsv',sep='\t')
+    disorder_df = pd.read_csv('D:/data/native_protein_digestion/12072021/turning_points/first_turn_disorder_nadrop.tsv',
+                              index_col=0, delimiter='\t')
+    disorder_df = disorder_df.boxplot(by='first turning point', grid=False, rot=45)
+    plt.show()
 
     # pdb_file = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/1dkq.pdb'
     # pdb_fasta = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/rcsb_pdb_1DKQ.fasta'
@@ -322,7 +355,7 @@ if __name__ == '__main__':
     #     print(count)
     # print (pdb_seq_dict)
     # ppp.dump(pdb_seq_dict,open(download_dir+'pdb_seq_dict.p','wb'))
-    pdb_seq_dict = ppp.load(open('F:/full_cover_pdbs/pdb_seq_dict.p', 'rb'))
+    # pdb_seq_dict = ppp.load(open('F:/full_cover_pdbs/pdb_seq_dict.p', 'rb'))
 
     ## computation on pdb file, distance, density and sasa
     """
