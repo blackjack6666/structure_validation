@@ -206,6 +206,30 @@ def get_unique_peptide(list_of_peptsv:list):
     return unique_peptide_dict
 
 
+def get_aggre_peptide(list_of_peptsv: list):
+    """
+    aggregate peptides at each time point
+    :param list_of_peptsv:
+    :return:
+    """
+    from pymol_test import peptide_counting
+    aggre_peptide_dict = {}
+    peptide_list = []
+    for idx, val in enumerate(list_of_peptsv):
+        if '\\' in val:
+            file_name = val.split('\\')[-2]
+        else:
+            file_name = val.split("/")[-2]
+        print(file_name)
+        unique_peptide_list = [each for each in peptide_counting(val) if each not in peptide_list]
+
+        peptide_list += unique_peptide_list
+        print(file_name, len(peptide_list))
+        aggre_peptide_dict[file_name] = set(peptide_list)
+    print([(each, len(aggre_peptide_dict[each])) for each in aggre_peptide_dict])
+    return aggre_peptide_dict
+
+
 def psm_reader(psm_path, fragpipe_ver=13.0):
     pep_spec_count_dict = defaultdict(int)
     ret_pep_dict = {}
