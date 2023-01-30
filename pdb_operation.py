@@ -460,11 +460,15 @@ def residue_density_cal2(input_tuple, protease=('trypsin'), radius=15):
     :param radius_power2: radius power of protease
     :return:
     """
-
     # chymotrypsin radius in water =2.1 nm ,reference https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2567952/
+    alphafold_pdb_file, protein_seq = input_tuple
+    if '-' in alphafold_pdb_file:
+        key = alphafold_pdb_file.split('\\')[-1].split('-')[1]
+    else:
+        key = alphafold_pdb_file.split('/')[-1].split('.pdb')[0]
+
     from commons import expasy_rules
     time_start = time.time()
-    alphafold_pdb_file, protein_seq = input_tuple
     cleavage_density_dict = {}
     # print (alphafold_pdb_file)
     if type(protease) == str:
@@ -477,25 +481,20 @@ def residue_density_cal2(input_tuple, protease=('trypsin'), radius=15):
         raise KeyError(
             'Protease should either be a string such as "trypsin" or a list such as ["trypsin", "chymotrypsin"]')
     residue_atom_coord_dict = pdb_file_reader(alphafold_pdb_file)[0]
-    residue_atom_coord_dict = reorder_pdb(
-        residue_atom_coord_dict)  # optional, to reindex to start from 1 and increase continously
+    # residue_atom_coord_dict = reorder_pdb(
+    #     residue_atom_coord_dict)  # optional, to reindex to start from 1 and increase continously
 
     xyz_nparray = [each for v in residue_atom_coord_dict.values() for each in v]  # 2D
 
     xyz_2d_reshape = np.reshape(xyz_nparray, (-1, 3))  # reshape atom coords into 2d array
 
     for each in cleavage_index:
-
         ref = residue_atom_coord_dict[each][-1]
         # bool_array = [inSphere(i, ref, radius*radius) for i in xyz_nparray]
         # num_resi_inrange = np.count_nonzero(bool_array)
         num_resi_inrange = inSphere2(ref, xyz_2d_reshape, radius)
         cleavage_density_dict[each] = num_resi_inrange
 
-    if '-' in alphafold_pdb_file:
-        key = alphafold_pdb_file.split('\\')[-1].split('-')[1]
-    else:
-        key = alphafold_pdb_file.split('/')[-1].split('.pdb')[0]
     print(key + ' done.')
     # print (f'time used: {time.time()-time_start}')
     return {key: cleavage_density_dict}
@@ -782,12 +781,13 @@ if __name__ == '__main__':
     """
     ### calculate covered distance/average pLDDT and write to excel
 
-    distance_dict = pickle.load(open('F:/native_digestion/01242023/time_points/to_center_distance_dict.pkl', 'rb'))
-    protein_list = [p for p in distance_dict]
-    unique_pep_dict = pickle.load(open('F:/native_digestion/01242023/time_points/f_unique_peptides_dict.p', 'rb'))
-    f_list = [f for f in unique_pep_dict]
-    sub_protein_dict = {p: protein_dict[p] for p in protein_list}
+    # distance_dict = pickle.load(open('F:/native_digestion/01242023/time_points/to_center_distance_dict.pkl', 'rb'))
+    # protein_list = [p for p in distance_dict]
+    # unique_pep_dict = pickle.load(open('F:/native_digestion/01242023/time_points/f_unique_peptides_dict.p', 'rb'))
+    # f_list = [f for f in unique_pep_dict]
+    # sub_protein_dict = {p: protein_dict[p] for p in protein_list}
     # df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
+    """
     df = pd.DataFrame(index=protein_list, columns=f_list)
     # for pep_tsv in pep_path_list:
     for pep_tsv in f_list:
@@ -831,7 +831,7 @@ if __name__ == '__main__':
         #     for prot in protein_list:
         #         df.at[prot, pep_tsv.split('/')[-2]] = np.nan
     df.to_excel('F:/native_digestion/01242023/analysis/distance_to_center.xlsx')
-
+    """
     ### calculate coverage distance/density from tmt data
     """
     tmt1 = 'F:/native_digestion/Uchicago_TMT/tmt_search_0826/TMT1/protein.tsv'
@@ -1047,12 +1047,15 @@ if __name__ == '__main__':
     import pickle
     from glob import glob
 
+    existed_density_dict = ppp.load(open('F:/native_digestion/12092022/analysis/trypsin_pymol_density_dict.pkl', 'rb'))
+    protein_list = pickle.load(open('F:/native_digestion/01242023/time_points/proteinid_set.p', 'rb'))
+    protein_list = [prot for prot in protein_list if prot not in existed_density_dict]
     pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
     # pdb_files = glob(pdb_path + '*F1*.pdb')
-    # pdb_files = [pdb_path + 'AF-' + each + '-F1-model_v1.pdb' for each in protein_list if
-    #              os.path.exists(pdb_path + 'AF-' + each + '-F1-model_v1.pdb')]
-    # input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('/')[-1]]) for pdb in pdb_files]
-    # print(len(input_list_tuples))
+    pdb_files = [pdb_path + 'AF-' + each + '-F1-model_v1.pdb' for each in protein_list if
+                 os.path.exists(pdb_path + 'AF-' + each + '-F1-model_v1.pdb')]
+    input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('/')[-1]]) for pdb in pdb_files]
+    print(len(input_list_tuples))
     """   
     count = 0
     # total_array = []
@@ -1068,16 +1071,16 @@ if __name__ == '__main__':
     import multiprocessing
     ### calculate residue density for each alphafold pdb, using multiple cpu cores
 
-    # start = time.time()
-    # with multiprocessing.Pool(multiprocessing.cpu_count() - 1) as pool:
-    #     result = pool.map(residue_density_cal2, input_list_tuples, chunksize=50)
-    #     pool.close()
-    #     pool.join()
-    # file_density_dict = {k: v for d in result for k, v in d.items()}
-    #
-    # pickle.dump(file_density_dict, open(
-    #     'F:/native_digestion/12092022/analysis/trypsin_pymol_density_dict.pkl', 'wb'))
-    # print(time.time() - start)
+    start = time.time()
+    with multiprocessing.Pool(multiprocessing.cpu_count() - 2) as pool:
+        result = pool.map(residue_density_cal2, input_list_tuples, chunksize=50)
+        pool.close()
+        pool.join()
+    file_density_dict = {k: v for d in result for k, v in d.items()}
+
+    pickle.dump(file_density_dict.update(existed_density_dict), open(
+        'F:/native_digestion/01242023/analysis/trypsin_atom_density_dict.pkl', 'wb'))
+    print(time.time() - start)
 
     # k_r_density_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
     # print (k_r_density_dict['Q8IXR9'])
