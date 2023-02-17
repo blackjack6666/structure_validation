@@ -251,6 +251,7 @@ if __name__ == '__main__':
     import time
     import pandas as pd
     from commons import get_unique_peptide, protein_tsv_reader
+    import pickle as pk
 
     pdb_file_base_path = 'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/'
 
@@ -259,7 +260,7 @@ if __name__ == '__main__':
     # psm_tsv_list = ['D:/data/native_protein_digestion/'+ each + '_1_native/psm.tsv' for each in time_point_rep]
     # print(f'{len(psm_tsv_list)} psm files to read...')
 
-    fasta_file = 'D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_only.fasta'
+    fasta_file = 'D:/data/pats/human_fasta/uniprot-proteome_UP000005640_sp_tr.fasta'
     # peptide_list = peptide_counting(peptide_tsv)
     protein_dict = fasta_reader(fasta_file)
 
@@ -305,24 +306,24 @@ if __name__ == '__main__':
     # psm_dict = {time:modified_peptide_from_psm(base_path+time+'/psm.tsv') for time in time_points}
     ### unique psm
     # psm_dict = get_unique_peptide(glob(base_path + '/*/peptide.tsv'))
-
+    psm_dict = pk.load(open('F:/native_digestion/01242023/time_points/f_unique_peptides_dict.p', 'rb'))
     # control_df = pd.read_excel('D:/data/native_protein_digestion/12072021/control/spearman_corr_pval_nofill.xlsx',index_col=0)
     # protein_cand_list = control_df.loc[(control_df['spearman correlation']<0)&(control_df['p value']<0.05)].index.tolist()
-
+    time_points = [f for f in psm_dict]
     # for each_protein in protein_to_check:
-    # for each_protein in ['P10253', 'P26583', 'P27694', 'P28074', 'P30626', 'P43490', 'P78344', 'Q01813', 'Q16204', 'Q96M27', 'Q9GZZ1', 'Q9H1E3', 'Q9NPF4', 'Q9Y285', 'P41091', 'P60660', 'Q6L8Q7']:
+    for each_protein in ['Q14157']:
     # for each_protein in protein_list:
-    #     pdb_file_name = 'AF-' + each_protein + '-F1-model_v1.pdb'
-    #     if os.path.exists(pdb_base_path + pdb_file_name):
-    #         print(each_protein)
-    #         for val in time_points:
-    #             print(val)
-    #             psm_list = psm_dict[val]
-    #             show_cov_3d(psm_list, protein_dict[each_protein], pdb_base_path + pdb_file_name,
-    #                         png_sava_path='F:/native_digestion/chymotrypsin_4_16/mapping_3d_trypsin_12072021/' + each_protein + '_' + val + '_trypsin.png')
-    #
-    #     else:
-    #         print(f"{pdb_file_name} not existed")
+    pdb_file_name = 'AF-' + each_protein + '-F1-model_v1.pdb'
+    if os.path.exists(pdb_base_path + pdb_file_name):
+        print(each_protein)
+        for val in time_points:
+            print(val)
+            psm_list = psm_dict[val]
+            show_cov_3d(psm_list, protein_dict[each_protein], pdb_base_path + pdb_file_name,
+                        png_sava_path='F:/native_digestion/01242023/3d_mapping/' + each_protein + '_' + val + '_trypsin.png')
+
+    else:
+        print(f"{pdb_file_name} not existed")
 
     ### map peptides to pdbs
     # for each_protein in protein_to_check:
@@ -342,9 +343,9 @@ if __name__ == '__main__':
     #             pdb_base_path + 'AF-' + 'Q96AE4' + '-F1-model_v1.pdb', alpha=0.6,
     #             png_sava_path='D:/data/SCV/FUBP1_02h_alphafold.png')
 
-    show_cov_3d(['QQAAYYAQTSPQGMPQHPPAPQGQ'], protein_dict['Q96AE4'],
-                pdb_base_path + 'AF-' + 'Q96AE4' + '-F1-model_v1.pdb',
-                png_sava_path='D:/data/chicago_mass_spec_day/FUBP_18h.png', plot_KR=False)
+    # show_cov_3d(['QQAAYYAQTSPQGMPQHPPAPQGQ'], protein_dict['Q96AE4'],
+    #             pdb_base_path + 'AF-' + 'Q96AE4' + '-F1-model_v1.pdb',
+    #             png_sava_path='D:/data/chicago_mass_spec_day/FUBP_18h.png', plot_KR=False)
 
     # for i in ['1h','2h','4h','18h']:
     #     show_cov_3d(psm_dict[i],protein_dict['P61604'],pdb_base_path+'AF-P61604-F1-model_v1.pdb',

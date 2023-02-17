@@ -781,11 +781,11 @@ if __name__ == '__main__':
     """
     ### calculate covered distance/average pLDDT and write to excel
 
-    # distance_dict = pickle.load(open('F:/native_digestion/01242023/time_points/to_center_distance_dict.pkl', 'rb'))
-    # protein_list = [p for p in distance_dict]
-    # unique_pep_dict = pickle.load(open('F:/native_digestion/01242023/time_points/f_unique_peptides_dict.p', 'rb'))
-    # f_list = [f for f in unique_pep_dict]
-    # sub_protein_dict = {p: protein_dict[p] for p in protein_list}
+    distance_dict = pickle.load(open('F:/native_digestion/01242023/time_points/to_center_distance_dict.pkl', 'rb'))
+    protein_list = [p for p in distance_dict]
+    unique_pep_dict = pickle.load(open('F:/native_digestion/01242023/time_points/f_unique_peptides_dict.p', 'rb'))
+    f_list = [f for f in unique_pep_dict]
+    sub_protein_dict = {p: protein_dict[p] for p in protein_list}
     # df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
     """
     df = pd.DataFrame(index=protein_list, columns=f_list)
@@ -899,20 +899,24 @@ if __name__ == '__main__':
     """
 
     ### calculate covered K/R density and write to excel
-    """
-    import pandas as pd
+
     from pymol_test import mapping_KR_toarray
     import json
-    df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
+
+    df = pd.DataFrame(index=protein_list, columns=f_list)  # some protein entry does not have pdb
     # solven_acc_dict = json.load(open(r'F:\native_digestion\alphafold_pdbs_sasa\sasa_area30A_total_dict.json', 'r'))
     # solven_acc_dict = pickle.load(open('D:/data/alphafold_pdb/1207control_protein_KR_sasa_dict.pkl','rb'))
-    KR_density_alpha_dict = pickle.load(open('F:/native_digestion/12092022/analysis/trypsin_pymol_density_dict.pkl', 'rb'))
+    KR_density_alpha_dict = pickle.load(
+        open('F:/native_digestion/01242023/analysis/trypsin_atom_density_dict.pkl', 'rb'))
+    existed_density_dict = ppp.load(open('F:/native_digestion/12092022/analysis/trypsin_pymol_density_dict.pkl', 'rb'))
+    KR_density_alpha_dict.update(existed_density_dict)
     # chymo_cleav_density_dict = pickle.load(
     #     open('D:/data/alphafold_pdb/688_prot_chymotry_cleave_density_dict.pkl', 'rb'))
-    for pep_tsv in pep_path_list:
+    for pep_tsv in f_list:
         print(pep_tsv)
         # peptide_list = peptide_counting(pep_tsv)
-        peptide_list = aggre_peptide_dict[pep_tsv.split('/')[-2]]
+        # peptide_list = aggre_peptide_dict[pep_tsv.split('/')[-2]]
+        peptide_list = unique_pep_dict[pep_tsv]
         freq_array_dict, freq_array_index_dict = mapping_KR_toarray(peptide_list, sub_protein_dict)
         for prot in protein_list:
             print (prot)
@@ -927,16 +931,16 @@ if __name__ == '__main__':
                     freq_array = freq_array_dict[prot]
                     ave_KR_density = cov_KR_density(freq_array, KR_density_alpha_dict[prot])
                     # ave_solvent_access = cov_KR_density(freq_array, solvent_access_dict)
-
-                    df.at[prot, pep_tsv.split('/')[-2]] = ave_KR_density
+                    df.at[prot, pep_tsv] = ave_KR_density
+                    # df.at[prot, pep_tsv.split('/')[-2]] = ave_KR_density
                     # df.at[prot, pep_tsv.split('/')[-2]] = ave_solvent_access
                     # df.at[prot, pep_tsv.split('/')[-2]] = freq_array_index_dict[prot]
                 else:
                     print('%s protein len between pdb and fasta is not same' % prot)
             else: 
                 continue
-    df.to_excel('F:/native_digestion/12092022/analysis/density_aggre_30Atotal.xlsx')
-    """
+    df.to_excel('F:/native_digestion/01242023/analysis/density_15A_radius.xlsx')
+
 
     ### plot 3d and centroid
     """
@@ -1047,15 +1051,15 @@ if __name__ == '__main__':
     import pickle
     from glob import glob
 
-    existed_density_dict = ppp.load(open('F:/native_digestion/12092022/analysis/trypsin_pymol_density_dict.pkl', 'rb'))
-    protein_list = pickle.load(open('F:/native_digestion/01242023/time_points/proteinid_set.p', 'rb'))
-    protein_list = [prot for prot in protein_list if prot not in existed_density_dict]
-    pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
+    # existed_density_dict = ppp.load(open('F:/native_digestion/12092022/analysis/trypsin_pymol_density_dict.pkl', 'rb'))
+    # protein_list = pickle.load(open('F:/native_digestion/01242023/time_points/proteinid_set.p', 'rb'))
+    # protein_list = [prot for prot in protein_list if prot not in existed_density_dict]
+    # pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
     # pdb_files = glob(pdb_path + '*F1*.pdb')
-    pdb_files = [pdb_path + 'AF-' + each + '-F1-model_v1.pdb' for each in protein_list if
-                 os.path.exists(pdb_path + 'AF-' + each + '-F1-model_v1.pdb')]
-    input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('/')[-1]]) for pdb in pdb_files]
-    print(len(input_list_tuples))
+    # pdb_files = [pdb_path + 'AF-' + each + '-F1-model_v1.pdb' for each in protein_list if
+    #              os.path.exists(pdb_path + 'AF-' + each + '-F1-model_v1.pdb')]
+    # input_list_tuples = [(pdb, alphafold_protein_dict[pdb.split('/')[-1]]) for pdb in pdb_files]
+    # print(len(input_list_tuples))
     """   
     count = 0
     # total_array = []
@@ -1071,16 +1075,16 @@ if __name__ == '__main__':
     import multiprocessing
     ### calculate residue density for each alphafold pdb, using multiple cpu cores
 
-    start = time.time()
-    with multiprocessing.Pool(multiprocessing.cpu_count() - 2) as pool:
-        result = pool.map(residue_density_cal2, input_list_tuples, chunksize=50)
-        pool.close()
-        pool.join()
-    file_density_dict = {k: v for d in result for k, v in d.items()}
-
-    pickle.dump(file_density_dict.update(existed_density_dict), open(
-        'F:/native_digestion/01242023/analysis/trypsin_atom_density_dict.pkl', 'wb'))
-    print(time.time() - start)
+    # start = time.time()
+    # with multiprocessing.Pool(multiprocessing.cpu_count() - 2) as pool:
+    #     result = pool.map(residue_density_cal2, input_list_tuples, chunksize=50)
+    #     pool.close()
+    #     pool.join()
+    # file_density_dict = {k: v for d in result for k, v in d.items()}
+    #
+    # pickle.dump(file_density_dict, open(
+    #     'F:/native_digestion/01242023/analysis/trypsin_atom_density_dict.pkl', 'wb'))
+    # print(time.time() - start)
 
     # k_r_density_dict = pickle.load(open('D:/data/alphafold_pdb/human_file_KR_density_dict.pkl','rb'))
     # print (k_r_density_dict['Q8IXR9'])

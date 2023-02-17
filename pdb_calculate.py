@@ -181,7 +181,7 @@ def fit_into_function(array_2d, proteinid='XXX', save_path=None):
     turning_points = sx[idx], sy[idx]
 
     # get first turning point (potentially unfolding time point)
-    first_turning_point = sx[idx[0]] if len(idx) != 0 else 'monotonic'
+    first_turning_point = sx[idx[0]] if len(idx) != 0 else -1
 
     # Visualize valuable turning points on the simplified trjectory.
     if save_path:
@@ -191,11 +191,11 @@ def fit_into_function(array_2d, proteinid='XXX', save_path=None):
         ax.plot(sx, sy, 'gx-', label='simplified trajectory')
         ax.plot(sx[idx], sy[idx], 'ro', markersize=7, label='turning points')
         ax.set_xlabel("time point")
-        ax.set_ylabel("atom density")
+        ax.set_ylabel("distance")
         ax.set_title(proteinid)
         ax.legend(loc='best')
-        print(f'saving figure to {save_path + proteinid}atom_dens.png ...')
-        plt.savefig(save_path + proteinid + 'atom_dens.png')
+        print(f'saving figure to {save_path + proteinid}distance.png ...')
+        plt.savefig(save_path + proteinid + 'distance.png')
         plt.close()
     # plt.show()
     return turning_points, first_turning_point
@@ -203,25 +203,25 @@ def fit_into_function(array_2d, proteinid='XXX', save_path=None):
 
 def batch_analysis_turning_point(df: pd.DataFrame, df_output='turning_point.tsv'):
     """
-    correlate first turning point with density of structure
+    calculate first turning point for multiple entries
     :param df: pd dataframe with uniprot id as index, time points as columns, values are distance/sasa, etc
     :return:
     """
     np_array = df.to_numpy()
     ind_list = df.index.tolist()
-    time_points = np.array([1, 2, 3, 4, 5, 6, 7])
+    time_points = np.array(range(1, np_array.shape[1] + 1))
     new_df = pd.DataFrame(index=ind_list, columns=['first turning point'])
 
     for prot, trend in zip(ind_list, np_array):
         nan_boolearn = np.isnan(trend)
         num_nan = np.count_nonzero(nan_boolearn)  # count number of nan
-        if num_nan <= 3:  # if nan data is less than 3
+        if num_nan <= 6:  # if nan data is less than 3
             print(prot)
             non_nan = trend[~nan_boolearn]
             non_nan_idx = np.argwhere(~nan_boolearn).flatten()
             non_nan_times = time_points[non_nan_idx]
             array_2d = list(zip(non_nan_times, non_nan))
-            first_turn = fit_into_function(array_2d, prot)[1]
+            first_turn = fit_into_function(array_2d, prot, save_path='F:/native_digestion/01242023/turning_points/')[1]
             new_df.loc[prot, 'first turning point'] = first_turn
             # print (num_nan,trend, trend[~nan_boolearn], np.argwhere(~nan_boolearn).flatten())
         else:
@@ -275,10 +275,10 @@ if __name__ == '__main__':
     # array2d = [[1,168.5],[2,266.6666667],[3,210.8888889],[4,221.5],[5,np.nan],[6,255.5]]
     # fit_into_function(array2d)
 
-    # density_df = pd.read_excel('D:/data/native_protein_digestion/12072021/control/cov_KR_density_15A.xlsx',index_col=0)
-    # batch_analysis_turning_point(density_df,df_output='D:/data/native_protein_digestion/12072021/turning_points/first_turn.tsv')
-    # turning_df = pd.read_csv('D:/data/native_protein_digestion/12072021/turning_points/first_turn.tsv',index_col=0,delimiter='\t')
-    # turning_df1 = turning_df.dropna()
+    density_df = pd.read_excel('F:/native_digestion/01242023/analysis/distance_to_center.xlsx', index_col=0)
+    batch_analysis_turning_point(density_df, df_output='F:/native_digestion/01242023/analysis/first_turning_point.tsv')
+    # turning_df = pd.read_csv('F:/native_digestion/01242023/analysis/first_turning_point.tsv',index_col=0,delimiter='\t')
+    # turning_df1 = turning_df.copy().dropna()
     # valid_prot_list = turning_df1.index.tolist()
     # url_str = 'https://mobidb.org/api/download?format=tsv&projection=&acc='+'%2C'.join(valid_prot_list)+'&proteome=UP000005640'
     # print (url_str)
@@ -287,14 +287,17 @@ if __name__ == '__main__':
     # for prot,turn in zip(turning_df1.index, turning_df1['first turning point'].tolist()):
     #     density = structure_volume('D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-'+prot+'-F1-model_v1.pdb')[1]
     # turning_df.loc[prot,'density'] = density
-    # disorder_fraction = prot_disorder_dict[prot]
-    # turning_df1.loc[prot, 'disorder fraction'] = disorder_fraction
+    #     if prot in prot_disorder_dict:
+    #         disorder_fraction = prot_disorder_dict[prot]
+    #         turning_df1.loc[prot, 'disorder fraction'] = disorder_fraction
 
-    # turning_df1.to_csv('D:/data/native_protein_digestion/12072021/turning_points/first_turn_disorder_nadrop.tsv',sep='\t')
-    disorder_df = pd.read_csv('D:/data/native_protein_digestion/12072021/turning_points/first_turn_disorder_nadrop.tsv',
-                              index_col=0, delimiter='\t')
-    disorder_df = disorder_df.boxplot(by='first turning point', grid=False, rot=45)
-    plt.show()
+    # turning_df1.to_csv('F:/native_digestion/01242023/analysis/first_turn_disorder_nadrop.tsv',sep='\t')
+    # disorder_df = pd.read_csv('F:/native_digestion/01242023/analysis/first_turn_disorder_nadrop.tsv',
+    #                           index_col=0, delimiter='\t').fillna(0).sort_values(by=['first turning point'])
+    # disorder_df['first turning point'] = disorder_df['first turning point'].apply(np.int64)
+    # disorder_df = disorder_df.boxplot(by='first turning point', grid=False, rot=45)
+    # plt.hist(disorder_df['first turning point'],bins=5)
+    # plt.show()
 
     # pdb_file = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/1dkq.pdb'
     # pdb_fasta = 'C:/tools/Rosetta/rosetta_src_2021.16.61629_bundle/main/source/bin/test/rcsb_pdb_1DKQ.fasta'
