@@ -35,6 +35,21 @@ def fasta_reader(fasta_file_path):
     return {each.split('\n')[0].split('|')[1]: ''.join(each.split('\n')[1:]) for each in file_split}
 
 
+def fasta_reader_gene(fasta_file_path):
+    # use gene name as key, take the longest sequence
+    gene_dict = defaultdict(str)
+    with open(fasta_file_path, 'r') as file_open:
+        file_split = file_open.read().split('\n>')
+    for each in file_split:
+        if 'GN=' in each.split('\n')[0]:
+            gene = each.split('\n')[0].split('GN=')[1].split(' ')[0]
+            seq = ''.join(each.split('\n')[1:])
+            if len(seq) >= len(gene_dict[gene]):
+                gene_dict[gene] = seq
+            else:
+                continue
+    return gene_dict
+
 def fasta_reader2(fasta_path:str):
 
     gene_protein_seq_dict = {}

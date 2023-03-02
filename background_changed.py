@@ -136,12 +136,13 @@ def show_multiple_color(psm_list_2d,
     # ptm_loc_2d = [ptm_loc_2d[0], [each for each in ptm_loc_2d[1] if each not in ptm_loc_2d[0]]]  # special case, delete for other use
     print (freq_array_clean,ptm_loc_2d)
     color_dict = {str(i)+'_color':j for i,j in zip(range(len(freq_array_2d)), color_list)} # color correspond to sample
-    ptm_color_dict = {str(i)+'_ptm_color':j for i,j in zip(range(len(freq_array_2d)), ptm_color_list)}
+    if ptm_color_list:
+        ptm_color_dict = {str(i) + '_ptm_color': j for i, j in zip(range(len(freq_array_2d)), ptm_color_list)}
 
     # initialize pdb file in pymol api
     pdb_name = os.path.split(pdb_file)[1]
     print(pdb_name)
-    # pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
     pymol.finish_launching()
     pymol.cmd.load(pdb_file, pdb_name)
     pymol.cmd.disable("all")
@@ -157,8 +158,9 @@ def show_multiple_color(psm_list_2d,
 
         pymol.cmd.set_color(sample,color_dict[sample])
 
-    for ptm in ptm_color_dict:
-        pymol.cmd.set_color(ptm,ptm_color_dict[ptm])
+    if ptm_color_list:
+        for ptm in ptm_color_dict:
+            pymol.cmd.set_color(ptm, ptm_color_dict[ptm])
 
     # color mapped amino acids
     for i in range(len(protein_seq)):
@@ -174,12 +176,13 @@ def show_multiple_color(psm_list_2d,
         if cov == False:
             pymol.cmd.color('grey', 'resi %i' % (i + 1))
         ### set transparency on specific residue
-        pymol.cmd.set('cartoon_transparency', 0.8, 'resi %i' % (i + 1))
+        # pymol.cmd.set('cartoon_transparency', 0.8, 'resi %i' % (i + 1))
     # color map PTMs
-    for ind, val in enumerate(ptm_loc_2d):
-        for ptm_loc in val:
-            pymol.cmd.color(str(ind)+'_ptm_color','resi %i' % (ptm_loc+1))
-            pymol.cmd.set('cartoon_transparency',0,'resi %i' %(ptm_loc+1))  # set ptm no transparent
+    if ptm_color_list:
+        for ind, val in enumerate(ptm_loc_2d):
+            for ptm_loc in val:
+                pymol.cmd.color(str(ind) + '_ptm_color', 'resi %i' % (ptm_loc + 1))
+                pymol.cmd.set('cartoon_transparency', 0, 'resi %i' % (ptm_loc + 1))  # set ptm no transparent
     if png_save_path:
         pymol.cmd.png(png_save_path)
 
@@ -189,7 +192,7 @@ def show_multiple_color(psm_list_2d,
     # dump_rep(pdb_name,base_path)
 
     print (f'time used {time.time()-time_start}')
-    # pymol.cmd.quit()
+    pymol.cmd.quit()
     # pymol.cmd.delete(pdb_name)
 
 

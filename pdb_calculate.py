@@ -259,6 +259,7 @@ if __name__ == '__main__':
     from glob import glob
     import pickle as ppp
     import json
+    import pickle as pk
 
     # structure_volume(r'D:\data\alphafold_pdb\UP000005640_9606_HUMAN/AF-P04075-F1-model_v1.pdb')
 
@@ -282,7 +283,9 @@ if __name__ == '__main__':
     # valid_prot_list = turning_df1.index.tolist()
     # url_str = 'https://mobidb.org/api/download?format=tsv&projection=&acc='+'%2C'.join(valid_prot_list)+'&proteome=UP000005640'
     # print (url_str)
-    # prot_disorder_dict = mobidb_data_clean(pd.read_csv('D:/data/native_protein_digestion/12072021/control/mobidb_result_2022-11-22T17_27_51.911Z.tsv',sep='\t'))
+    prot_disorder_dict = mobidb_data_clean(
+        pd.read_csv('D:/data/native_protein_digestion/12072021/control/mobidb_result_2022-11-22T17_27_51.911Z.tsv',
+                    sep='\t'))
 
     # for prot,turn in zip(turning_df1.index, turning_df1['first turning point'].tolist()):
     #     density = structure_volume('D:/data/alphafold_pdb/UP000005640_9606_HUMAN/AF-'+prot+'-F1-model_v1.pdb')[1]

@@ -783,11 +783,13 @@ if __name__ == '__main__':
 
     distance_dict = pickle.load(open('F:/native_digestion/01242023/time_points/to_center_distance_dict.pkl', 'rb'))
     protein_list = [p for p in distance_dict]
-    unique_pep_dict = pickle.load(open('F:/native_digestion/01242023/time_points/f_unique_peptides_dict.p', 'rb'))
-    f_list = [f for f in unique_pep_dict]
+    unique_pep_dict = pickle.load(open('F:/native_digestion/01242023/time_points/f_peptides_dict.p', 'rb'))
+    f_list = ['tryps_0005min', 'tryps_0010min', 'tryps_0015min', 'tryps_0020min', 'tryps_0030min', 'tryps_0040min',
+              'tryps_0050min', 'tryps_0060min', 'tryps_0120min', 'tryps_0180min', 'tryps_0240min', 'tryps_1440min',
+              'tryps_leftover']
     sub_protein_dict = {p: protein_dict[p] for p in protein_list}
     # df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
-    """
+
     df = pd.DataFrame(index=protein_list, columns=f_list)
     # for pep_tsv in pep_path_list:
     for pep_tsv in f_list:
@@ -830,8 +832,8 @@ if __name__ == '__main__':
         # else:
         #     for prot in protein_list:
         #         df.at[prot, pep_tsv.split('/')[-2]] = np.nan
-    df.to_excel('F:/native_digestion/01242023/analysis/distance_to_center.xlsx')
-    """
+    df.to_excel('F:/native_digestion/01242023/analysis/distance_to_center_all.xlsx')
+
     ### calculate coverage distance/density from tmt data
     """
     tmt1 = 'F:/native_digestion/Uchicago_TMT/tmt_search_0826/TMT1/protein.tsv'
@@ -899,7 +901,7 @@ if __name__ == '__main__':
     """
 
     ### calculate covered K/R density and write to excel
-
+    """
     from pymol_test import mapping_KR_toarray
     import json
 
@@ -940,7 +942,7 @@ if __name__ == '__main__':
             else: 
                 continue
     df.to_excel('F:/native_digestion/01242023/analysis/density_15A_radius.xlsx')
-
+    """
 
     ### plot 3d and centroid
     """
