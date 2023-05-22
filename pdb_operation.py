@@ -734,12 +734,12 @@ if __name__ == '__main__':
 
     ### pdb protein dictionary
 
-    # base_path = 'F:/native_digestion/01202023/search/'
-    # folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
-    # time_points = [each.split('/')[-1] for each in folders]
-    # pep_path_list = [each + '/peptide.tsv' for each in folders]
+    base_path = 'D:/data/native_protein_digestion/12072021/heat_shock_ionquant_MBR/'
+    folders = [base_path + folder for folder in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, folder))]
+    time_points = [each.split('/')[-1] for each in folders]
+    pep_path_list = [each + '/peptide.tsv' for each in folders]
     # psm_path_list = [each + '/psm.tsv' for each in folders]
-    # unique_peptide_dict = get_unique_peptide(pep_path_list)
+    unique_peptide_dict = get_unique_peptide(pep_path_list)
     # aggre_peptide_dict = get_aggre_peptide(pep_path_list)
     # print([(each, len(unique_peptide_dict[each])) for each in unique_peptide_dict])
     # print ([(each, len(peptide_counting(each))) for each in pep_path_list])
@@ -782,22 +782,26 @@ if __name__ == '__main__':
     ### calculate covered distance/average pLDDT and write to excel
 
     distance_dict = pickle.load(open('F:/native_digestion/01242023/time_points/to_center_distance_dict.pkl', 'rb'))
-    protein_list = [p for p in distance_dict]
-    unique_pep_dict = pickle.load(open('F:/native_digestion/01242023/time_points/f_peptides_dict.p', 'rb'))
-    f_list = ['tryps_0005min', 'tryps_0010min', 'tryps_0015min', 'tryps_0020min', 'tryps_0030min', 'tryps_0040min',
-              'tryps_0050min', 'tryps_0060min', 'tryps_0120min', 'tryps_0180min', 'tryps_0240min', 'tryps_1440min',
-              'tryps_leftover']
+    prot_list_heatshock = \
+    pd.read_csv('D:/data/native_protein_digestion/12072021/heat_shock_ionquant_MBR/combined_protein.tsv'
+                , sep='\t', index_col=0)['Protein ID'].tolist()
+    protein_list = [each for each in prot_list_heatshock if each in distance_dict]
+    # protein_list = [p for p in distance_dict]
+    # unique_pep_dict = pickle.load(open('F:/native_digestion/01242023/time_points/f_peptides_dict.p', 'rb'))
+    # f_list = ['tryps_0005min', 'tryps_0010min', 'tryps_0015min', 'tryps_0020min', 'tryps_0030min', 'tryps_0040min',
+    #           'tryps_0050min', 'tryps_0060min', 'tryps_0120min', 'tryps_0180min', 'tryps_0240min', 'tryps_1440min',
+    #           'tryps_leftover']
     sub_protein_dict = {p: protein_dict[p] for p in protein_list}
-    # df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
+    df = pd.DataFrame(index=protein_list, columns=time_points)  # some protein entry does not have pdb
 
-    df = pd.DataFrame(index=protein_list, columns=f_list)
-    # for pep_tsv in pep_path_list:
-    for pep_tsv in f_list:
+    # df = pd.DataFrame(index=protein_list, columns=f_list)
+    for pep_tsv in pep_path_list:
+        # for pep_tsv in f_list:
         print (pep_tsv)
         # peptide_list = peptide_counting(pep_tsv)
-        # peptide_list = unique_peptide_dict[pep_tsv.split('/')[-2]]
+        peptide_list = unique_peptide_dict[pep_tsv.split('/')[-2]]
         # peptide_list = aggre_peptide_dict[pep_tsv.split('/')[-2]]
-        peptide_list = unique_pep_dict[pep_tsv]
+        # peptide_list = unique_pep_dict[pep_tsv]
         # if peptide_list:
         freq_array_dict = mapping_KR_toarray(peptide_list, sub_protein_dict)[0]
         for prot in protein_list:
@@ -820,19 +824,19 @@ if __name__ == '__main__':
                     # print (cov_dist)
                     # ave_cov_plddt = cov_plddt(freq_array,plddt_dict)
                     # df.at[prot + '_' + uniprot_pdb_dict[prot], pep_tsv.split('/')[-2]] = cov_dist
-                    # df.at[prot,pep_tsv.split('/')[-2]] = cov_dist
-                    df.at[prot, pep_tsv] = cov_dist
+                    df.at[prot, pep_tsv.split('/')[-2]] = cov_dist
+                    # df.at[prot, pep_tsv] = cov_dist
                     # else:
                     #     print('%s protein len between pdb and fasta is not same' % prot)
                 else:
-                    # df.at[prot, pep_tsv.split('/')[-2]] = np.nan
-                    df.at[prot, pep_tsv] = np.nan
+                    df.at[prot, pep_tsv.split('/')[-2]] = np.nan
+                    # df.at[prot, pep_tsv] = np.nan
                     print (f'{prot} not mapped to pdb')
                     continue
         # else:
         #     for prot in protein_list:
         #         df.at[prot, pep_tsv.split('/')[-2]] = np.nan
-    df.to_excel('F:/native_digestion/01242023/analysis/distance_to_center_all.xlsx')
+    df.to_excel('D:/data/native_protein_digestion/12072021/heat_shock_ionquant_MBR/distance_to_center_all.xlsx')
 
     ### calculate coverage distance/density from tmt data
     """
