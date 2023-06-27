@@ -142,7 +142,7 @@ def show_multiple_color(psm_list_2d,
     # initialize pdb file in pymol api
     pdb_name = os.path.split(pdb_file)[1]
     print(pdb_name)
-    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    # pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
     pymol.finish_launching()
     pymol.cmd.load(pdb_file, pdb_name)
     pymol.cmd.disable("all")
@@ -192,7 +192,7 @@ def show_multiple_color(psm_list_2d,
     # dump_rep(pdb_name,base_path)
 
     print (f'time used {time.time()-time_start}')
-    pymol.cmd.quit()
+    # pymol.cmd.quit()
     # pymol.cmd.delete(pdb_name)
 
 
