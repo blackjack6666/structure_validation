@@ -39,8 +39,8 @@ color_list = [[61, 101, 245], [242, 44, 44], [44, 242, 44], [186, 44, 242], [245
 # time_points,color_list = ['144_1080'], [[255,0,0]]
 
 peptide_list = [psm_dict['Lgals8'][time] for time in time_points]
-show_multiple_color(peptide_list, gene_dict['Lgals8'], pdb_file, color_list
-                    )
+show_multiple_color(peptide_list, gene_dict['Lgals8'], pdb_file1, color_list,
+                    png_save_path='D:/thesis/figures/Lgals8_agg.png')
 
 """
 pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'
