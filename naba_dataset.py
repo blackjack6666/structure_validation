@@ -10,7 +10,8 @@ import pickle as pp
 fasta_file = 'D:/data/Naba_deep_matrisome/uniprot-proteome_UP000000589_mouse_human_SNED1.fasta'
 protein_id = 'Q9JL15'
 pdb_file = 'D:/data/alphafold_pdb/UP000000589_10090_MOUSE/' + 'AF-' + protein_id + '-F1-model_v1.pdb'
-pdb_file1 = 'C:/Users/gao lab computer/Downloads/2yro.pdb'
+pdb_file1 = r'D:\data\pdb\pdb_human_file/6ff7.pdb'
+base_path = 'C:/tools/pymol-exporter-0.01/pymol_exporter/'
 # protein_dict = fasta_reader(fasta_file)
 gene_dict = fasta_reader_gene(fasta_file)
 """
@@ -40,7 +41,7 @@ color_list = [[61, 101, 245], [242, 44, 44], [44, 242, 44], [186, 44, 242], [245
 
 peptide_list = [psm_dict['Lgals8'][time] for time in time_points]
 show_multiple_color(peptide_list, gene_dict['Lgals8'], pdb_file1, color_list,
-                    png_save_path='D:/thesis/figures/Lgals8_agg.png')
+                    base_path=base_path)
 
 """
 pdb_path = 'D:/data/alphafold_pdb/UP000005640_9606_HUMAN/'

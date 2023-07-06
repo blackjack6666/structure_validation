@@ -189,7 +189,8 @@ def show_multiple_color(psm_list_2d,
     time.sleep(1)
 
     print(f'image saved to {png_save_path}')
-    # dump_rep(pdb_name,base_path)
+    if base_path:
+        dump_rep(pdb_name, base_path)
     print (f'time used {time.time()-time_start}')
     # pymol.cmd.quit()
     # pymol.cmd.delete(pdb_name)
