@@ -1,4 +1,5 @@
-# functions regarding visualizing user-uploaded custom pdb
+"""functions regarding visualizing user-uploaded custom pdb"""
+
 from collections import defaultdict
 from params import *
 import re
@@ -19,19 +20,19 @@ def seq_reader(pdb_file):
 
     # iterate each model, chain, and residue
     # printing out the sequence for each chain
-
-    # for model in structure:
-    #     for chain in model:
-    #         seq = ''
-    #         for residue in chain:
-    #             if residue.resname != 'HOH': # discard h2o
-    #                 seq += aa_dict[residue.resname]
-    #
+    seq_dict = {}
+    for model in structure:
+        for chain in model:
+            seq = ''
+            for residue in chain:
+                if residue.resname in aa_dict:  # discard h2o, small molecules, etc.
+                    seq += aa_dict[residue.resname]
+            seq_dict[chain.get_id()] = seq
 
     # one line
-    seq = ''.join([aa_dict[residue.resname] for model in structure for chain in model for residue in chain if
-                   residue.resname in aa_dict])
-    return seq
+    # seq = ''.join([aa_dict[residue.resname] for model in structure for chain in model for residue in chain if
+    #                residue.resname in aa_dict])
+    return seq_dict
 
 
 def seq_reader2(pdb_file):
@@ -57,31 +58,37 @@ def pdb_resi_atom_mapper(pdb_file):
     structure = parser.get_structure('struct', pdb_file)
 
     # iterate each model, chain, and residue
-    res_atom_number_dict = defaultdict(set)
+    chain_resi_atom_dict = {}
     for model in structure:
         for chain in model:
             chain_id = chain.get_id()
+            resi_atom_dict = {}
+            res_num = 1  # count residue locaiton from 1
             for residue in chain:
-                res_num = residue.get_id()[1]  # residue number
-                atom_num_list = [atom.get_serial_number() for atom in
-                                 residue.get_atoms()]  # get all atoms num for residue
-                # take the atom number range
-                res_atom_number_dict[res_num].add('-'.join([chain_id, str(atom_num_list[0]), str(atom_num_list[-1])]))
+                res_name = residue.get_resname()
+                if res_name in aa_dict:  # only take amino acid into account
+                    # res_num = residue.get_id()[1]  # residue number
+                    atom_num_list = [atom.get_serial_number() for atom in
+                                     residue.get_atoms()]  # get all atoms num for residue
+                    # take the atom number range
+                    resi_atom_dict[res_num] = [atom_num_list[0], atom_num_list[-1]]
+                    res_num += 1
+                    # res_atom_number_dict[res_num].add('-'.join([chain_id, str(atom_num_list[0]), str(atom_num_list[-1])]))
+            chain_resi_atom_dict[chain_id] = resi_atom_dict
     # reorder dictionary
-    clean_dict = {}
-    for res in res_atom_number_dict:
-        chain_atom_dict = {}
-        for each in res_atom_number_dict[res]:
-            chain_atom_num = each.split('-')
-            chain_atom_dict[chain_atom_num[0]] = '-'.join(chain_atom_num[1:])
-        clean_dict[res] = chain_atom_dict
-    return clean_dict
+    # clean_dict = {}
+    # for res in res_atom_number_dict:
+    #     chain_atom_dict = {}
+    #     for each in res_atom_number_dict[res]:
+    #         chain_atom_num = each.split('-')
+    #         chain_atom_dict[chain_atom_num[0]] = '-'.join(chain_atom_num[1:])
+    #     clean_dict[res] = chain_atom_dict
+    return chain_resi_atom_dict
 
 
-def show_3d_custom_pdb(protein_id,
-                       pdb_file,
-                       id_freq_array_dict,
-                       id_ptm_idx_dict,
+def show_3d_custom_pdb(pdb_file,
+                       psm_list,
+                       protein_dict,
                        regex_color_dict=None,
                        png_sava_path=None,
                        base_path=None):
@@ -97,12 +104,14 @@ def show_3d_custom_pdb(protein_id,
     :return:
     """
     time_start = time.time()
-    frequency_array = id_freq_array_dict[protein_id]
-    if id_ptm_idx_dict != {}:
-        ptm_nonzero_idx_dict = id_ptm_idx_dict[protein_id]
-
-    else:
-        ptm_nonzero_idx_dict = None
+    # frequency_array = id_freq_array_dict[protein_id]
+    # if id_ptm_idx_dict != {}:
+    #     ptm_nonzero_idx_dict = id_ptm_idx_dict[protein_id]
+    #
+    # else:
+    #     ptm_nonzero_idx_dict = None
+    chain_frequency_array_dict, chain_ptm_nonzero_idx_dict = peptide_mapping_chains(psm_list, protein_dict,
+                                                                                    regex_color_dict)
 
     pdb_name = os.path.split(pdb_file)[1]
     print(pdb_name)
@@ -123,14 +132,16 @@ def show_3d_custom_pdb(protein_id,
     print(f'image saved to {png_sava_path}')
 
     # pymol2glmol, convert pdb to pse and visualize through html
-    dump_rep_custom_pdb(pdb_name, frequency_array, ptm_nonzero_idx_dict, regex_color_dict, base_path, pdb_file)
+    dump_rep_custom_pdb(pdb_name, chain_frequency_array_dict, chain_ptm_nonzero_idx_dict, regex_color_dict, base_path,
+                        pdb_file)
     # dump_rep(pdb_name,base_path)
     print(f'time used for mapping: {pdb_name, time.time() - time_start}')
     # Get out!
     pymol.cmd.quit()
 
 
-def dump_rep_custom_pdb(name, frequency_array, ptm_nonzero_idx_dict, regex_color_dict, base_path, pdb_file):
+def dump_rep_custom_pdb(name, chain_frequency_array_dict, chain_ptm_nonzero_idx_dict, regex_color_dict, base_path,
+                        pdb_file):
     if 'PYMOL_GIT_MOD' in os.environ:
         import shutil
         try:
@@ -160,7 +171,8 @@ def dump_rep_custom_pdb(name, frequency_array, ptm_nonzero_idx_dict, regex_color
             ret += parseDistObj(obj)
 
     pdb_str = cmd.get_pdbstr(name)
-    ret += '\n' + color_getter_custom_pdb(frequency_array, ptm_nonzero_idx_dict, regex_color_dict, pdb_file)
+    ret += '\n' + color_getter_custom_pdb(chain_frequency_array_dict, chain_ptm_nonzero_idx_dict, regex_color_dict,
+                                          pdb_file)
     print(ret)
     cmd.turn('z', 180)
     view = cmd.get_view()
@@ -204,10 +216,11 @@ def dump_rep_custom_pdb(name, frequency_array, ptm_nonzero_idx_dict, regex_color
     f.close()
 
 
-def color_getter_custom_pdb(freq_array, ptm_idx_dict, regex_color_dict, pdb_file):
+def color_getter_custom_pdb(chain_freq_array_dict, chain_ptm_idx_dict, regex_color_dict, pdb_file):
     """
     for custom pdb file, based on numpy array get blocks of zeros and non_zeros, generate color string for GLMOL
-    :param freq_array: numpy array
+    :param chain_freq_array_dict: peptide_mapping_chains
+    :param chain_ptm_idx_dict: peptide_mapping_chains
     :param pdb_file: user loaded .pdb file
     :return:
     """
@@ -217,65 +230,94 @@ def color_getter_custom_pdb(freq_array, ptm_idx_dict, regex_color_dict, pdb_file
 
     # from pdb_str get element pos to amino acid pos
 
-    amino_ele_pos_dict = pdb_resi_atom_mapper(pdb_file)  # {residue_num:{'chain':'start_end', 'chain':'start-end'}}
+    chain_amino_ele_pos_dict = pdb_resi_atom_mapper(
+        pdb_file)  # {chain:{residue number:[atom start number, atom end number]}}
 
     defalt = 'color:0.500,0.500,0.500:'  # grey
-    covered = 'color:1.000,0.000,0.000:'
+    covered = 'color:1.000,0.000,0.000:'  # red
 
     # get index of zeros and nonzeros
-    non_zero_index = np.nonzero(freq_array)[0]
-    zero_index = np.nonzero(freq_array == 0)[0]
+    non_zero_index_dict = {chain: np.nonzero(chain_freq_array_dict[chain])[0] for chain in chain_freq_array_dict}
+    zero_index_dict = {chain: np.nonzero(chain_freq_array_dict[chain] == 0)[0] for chain in chain_freq_array_dict}
 
     # get index blocks of zeros and nonzeros
-    cov_pos_block = np.split(non_zero_index, np.where(np.diff(non_zero_index) != 1)[0] + 1)
-    non_cov_pos_block = np.split(zero_index, np.where(np.diff(zero_index) != 1)[0] + 1)
-    print(cov_pos_block, non_cov_pos_block)
+    cov_pos_block = {
+        chain: np.split(non_zero_index_dict[chain], np.where(np.diff(non_zero_index_dict[chain]) != 1)[0] + 1)
+        for chain in non_zero_index_dict}
+    non_cov_pos_block = {chain: np.split(zero_index_dict[chain], np.where(np.diff(zero_index_dict[chain]) != 1)[0] + 1)
+                         for chain in zero_index_dict}
+    # print(cov_pos_block, non_cov_pos_block)
 
     # string concatenate
+    for chain in non_cov_pos_block:
+        all_block = non_cov_pos_block[chain]  # list of numpy arrays
+        if len(all_block[0]) > 0:
+            defalt += ','.join([str(chain_amino_ele_pos_dict[chain][each[0] + 1][0]) + '-' + str(
+                chain_amino_ele_pos_dict[chain][each[-1] + 1][-1])
+                                for each in all_block])
+            defalt += ','
+    for chain in cov_pos_block:
+        all_block = cov_pos_block[chain]  # list of numpy arrays
+        if len(all_block[0]) > 0:
+            # print (all_block)
+            covered += ','.join([str(chain_amino_ele_pos_dict[chain][each[0] + 1][0]) + '-' + str(
+                chain_amino_ele_pos_dict[chain][each[-1] + 1][-1])
+                                 for each in all_block])
+            covered += ','
 
-    # defalt += ','.join([str(amino_ele_pos_dict[each[0]+1][0])+'-'+str(amino_ele_pos_dict[each[-1]+1][-1])
-    #                   for each in non_cov_pos_block])
-    # covered += ','.join([str(amino_ele_pos_dict[each[0]+1][0])+'-'+str(amino_ele_pos_dict[each[-1]+1][-1])
-    #                   for each in cov_pos_block])
-    for each in non_cov_pos_block:
-        print('block', each)
-        for chain in amino_ele_pos_dict[each[0] + 1]:
-            print(chain)
-            print(amino_ele_pos_dict[each[0] + 1][chain])
-            print(amino_ele_pos_dict[each[-1] + 1][chain])
-
-    defalt += ','.join([amino_ele_pos_dict[each[0] + 1][chain].split('-')[0] + '-' +
-                        amino_ele_pos_dict[each[-1] + 1][chain].split('-')[-1]
-                        for each in non_cov_pos_block for chain in amino_ele_pos_dict[each[0] + 1]])
-    covered += ','.join([amino_ele_pos_dict[each[0] + 1][chain].split('-')[0] + '-' +
-                         amino_ele_pos_dict[each[-1] + 1][chain].split('-')[-1]
-                         for each in cov_pos_block for chain in amino_ele_pos_dict[each[0] + 1]])
+    # defalt += ','.join([amino_ele_pos_dict[each[0] + 1][chain].split('-')[0] + '-' +
+    #                     amino_ele_pos_dict[each[-1] + 1][chain].split('-')[-1]
+    #                     for each in non_cov_pos_block for chain in amino_ele_pos_dict[each[0] + 1]])
+    # covered += ','.join([amino_ele_pos_dict[each[0] + 1][chain].split('-')[0] + '-' +
+    #                      amino_ele_pos_dict[each[-1] + 1][chain].split('-')[-1]
+    #                      for each in cov_pos_block for chain in amino_ele_pos_dict[each[0] + 1]])
 
     # ptm color string concatenate
     ptm_color = ''
-    if ptm_idx_dict:
-        for ptm in ptm_idx_dict:
-            ptm_color += 'color:' + ','.join(['%.3f' % (each / 256) for each in regex_color_dict[ptm]]) + ':'
-            ptm_color += ','.join([amino_ele_pos_dict[idx + 1][chain]
-                                   for idx in ptm_idx_dict[ptm] for chain in amino_ele_pos_dict[idx + 1]])
-            ptm_color += '\n'
+    if chain_ptm_idx_dict:
+        for chain in chain_ptm_idx_dict:
+            ptm_idx_dict = chain_ptm_idx_dict[chain]
+            for ptm in ptm_idx_dict:
+                ptm_color += 'color:' + ','.join(['%.3f' % (each / 256) for each in regex_color_dict[ptm]]) + ':'
+                ptm_color += ','.join([str(chain_amino_ele_pos_dict[chain][idx + 1][0]) + '-'
+                                       + str(chain_amino_ele_pos_dict[chain][idx + 1][-1])
+                                       for idx in ptm_idx_dict[ptm]])
+                ptm_color += '\n'
 
     return defalt + '\n' + covered + '\n' + ptm_color.rstrip('\n')
+
+
+def peptide_mapping_chains(peptide_list, protein_dict, regex_dict=None):
+    """
+    map peptides to multiple chains of sequence
+    :param protein_dict: single protein sequence dictionary, {chain_A: sequence, chain_B: sequence, ...}
+    :param peptide_list: peptide list with ptms
+    :param regex_dict: ptm regex color dictionary
+    :return:
+    """
+    chain_freq_array_dict, chain_ptm_index_dict = freq_ptm_index_gen_batch_v2(peptide_list, protein_dict, regex_dict)[
+                                                  :2]
+
+    if regex_dict == None:
+        return chain_freq_array_dict, None
+    else:
+        return chain_freq_array_dict, chain_ptm_index_dict
 
 
 if __name__ == '__main__':
     import numpy as np
 
     base_path = 'C:/tools/pymol-exporter-0.01/pymol_exporter/'
-    pdb_file = r'D:\data\pdb\pdb_human_file/5t0i.pdb'
-
-    prot_seq = seq_reader2(pdb_file)
-    print(prot_seq[70:300])
-    protein_dict = {'5t0i': prot_seq}
-    # res_atom_dict = pdb_resi_atom_mapper(pdb_file)
+    pdb_file = r'D:\data\pdb\pdb_human_file/6t3q.pdb'
+    chain_seq_dict = seq_reader(pdb_file)
+    # prot_seq = seq_reader2(pdb_file)
+    print(chain_seq_dict)
+    print(len(chain_seq_dict))
+    chain_res_atom_dict = pdb_resi_atom_mapper(pdb_file)
+    print(chain_res_atom_dict['L'])
     # print (res_atom_dict[1332])
     # print (seq)
-    peptide_list = ['LQSEQPLQ[200]VARCTKI', 'SDQVAPTDIEEGMRVG[100]VD']
-    regex_dict = {'Q\[200\]': [0, 0, 256], 'G[100]': [0, 256, 0]}
-    id_freq_array_dict, id_ptm_idx_dict, h = freq_ptm_index_gen_batch_v2(peptide_list, protein_dict, regex_dict)
-    show_3d_custom_pdb('5t0i', pdb_file, id_freq_array_dict, id_ptm_idx_dict, regex_dict, base_path=base_path)
+    peptide_list = ['GLRPLFE[100]KKSLEDKTE', 'AEIGMSPWQVMLFRKSPQELL[200]CG', 'DFEEI[300]PE']
+    regex_dict = {'E\[100\]': [0, 0, 256], 'L\[200\]': [0, 256, 0], 'I\[300\]': [100, 200, 200]}
+    # id_freq_array_dict, id_ptm_idx_dict, h = freq_ptm_index_gen_batch_v2(peptide_list, protein_dict, regex_dict)
+    show_3d_custom_pdb(pdb_file, peptide_list, chain_seq_dict, regex_dict, base_path=base_path)

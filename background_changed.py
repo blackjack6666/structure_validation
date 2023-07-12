@@ -41,7 +41,7 @@ def show_cov_3d(peptide_list,
     # open pdb file with pymol
     pdb_name = os.path.split(pdb_file)[1]
     print (pdb_name)
-    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    # pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
     pymol.finish_launching()
     pymol.cmd.load(pdb_file, pdb_name)
     pymol.cmd.disable("all")
@@ -196,7 +196,8 @@ def show_multiple_color(psm_list_2d,
     # pymol.cmd.delete(pdb_name)
 
 
-def show_3d_batch(psm_list, protein_dict, pdb_base_path, png_save_path, time_point='1h',glmol_basepath=None):
+def show_3d_batch(psm_list, protein_list, protein_dict, pdb_base_path, png_save_path, time_point='1h',
+                  glmol_basepath=None):
     """
     output 3d html glmol in batch
     :param psm_list: psm list with modification M[#]
@@ -210,7 +211,7 @@ def show_3d_batch(psm_list, protein_dict, pdb_base_path, png_save_path, time_poi
 
     id_freq_array_dict, id_ptm_idx_dict = freq_ptm_index_gen_batch_v2(psm_list,protein_dict)
 
-    for id in id_freq_array_dict:
+    for id in protein_list:
         time_start = time.time()
         pdb_path = pdb_base_path+'AF-'+id+'-F1-model_v1.pdb'
         if os.path.exists(pdb_path): # if local pdb db has this id entry
@@ -248,6 +249,61 @@ def show_3d_batch(psm_list, protein_dict, pdb_base_path, png_save_path, time_poi
             continue
         # pymol.cmd.delete(pdb_name)
         # pymol.cmd.quit()
+
+
+def show_3d_batch_2(sample_peptide_dict, protein_list, protein_dict, pdb_base_path, png_save_path):
+    """
+    3d mapping of peptides from multiple samples (time points)
+    :param sample_peptide_dict:
+    :param protein_list:
+    :param protein_dict:
+    :param pdb_base_path:
+    :param png_save_path:
+    :return:
+    """
+    sample_id_freq_array_dict = {each: freq_ptm_index_gen_batch_v2(sample_peptide_dict[each], protein_dict)[0]
+                                 for each in sample_peptide_dict}
+    pymol.pymol_argv = ['pymol', '-qc']  # pymol launching: quiet (-q), without GUI (-c)
+    pymol.finish_launching()
+
+    for id in protein_list:
+        time_start = time.time()
+        pdb_path = pdb_base_path + 'AF-' + id + '-F1-model_v1.pdb'
+        if os.path.exists(pdb_path):  # if local pdb db has this id entry
+            pdb_name = os.path.split(pdb_path)[1]
+            print(pdb_name)
+            pymol.cmd.load(pdb_path, pdb_name)
+            pymol.cmd.disable("all")
+            pymol.cmd.enable()
+            # print(pymol.cmd.get_names())
+            pymol.cmd.hide('all')
+            pymol.cmd.show('cartoon')
+            pymol.cmd.set('ray_opaque_background', 0)
+            pymol.cmd.bg_color('white')
+            for sample in sample_peptide_dict:
+                freq_arry = sample_id_freq_array_dict[sample][id]
+                # get index of zeros and nonzeros
+                non_zero_index = np.nonzero(freq_arry)[0]
+                zero_index = np.nonzero(freq_arry == 0)[0]
+                # get index blocks of zeros and nonzeros
+                cov_pos_block = np.split(non_zero_index, np.where(np.diff(non_zero_index) != 1)[0] + 1)
+                non_cov_pos_block = np.split(zero_index, np.where(np.diff(zero_index) != 1)[0] + 1)
+                for non_cov in non_cov_pos_block:
+                    pymol.cmd.color('grey', 'resi %i-%i' % (non_cov[0] + 1, non_cov[-1] + 1))
+                for cov in cov_pos_block:
+                    if len(cov) > 0:
+                        pymol.cmd.color('red', 'resi %i-%i' % (cov[0] + 1, cov[-1] + 1))
+                pymol.cmd.png(png_save_path + id + '_' + sample + '.png')
+                time.sleep(0.1)
+                print(f'{sample} done mapping...')
+                # reset all color to green
+                pymol.cmd.color('green', 'resi 1-%i' % (len(freq_arry)))
+
+            pymol.cmd.delete(pdb_name)
+        else:
+            print(f'{id} not exist in pdb database')
+            continue
+    pymol.cmd.quit()
 
 
 if __name__ == '__main__':
@@ -309,24 +365,29 @@ if __name__ == '__main__':
     # psm_dict = {time:modified_peptide_from_psm(base_path+time+'/psm.tsv') for time in time_points}
     ### unique psm
     # psm_dict = get_unique_peptide(glob(base_path + '/*/peptide.tsv'))
-    psm_dict = pk.load(open('F:/native_digestion/01242023/time_points/f_unique_peptides_dict.p', 'rb'))
+    psm_dict = pk.load(open('F:/native_digestion/01242023/time_points/f_peptides_dict.p', 'rb'))
+    protein_list = pd.read_csv(
+        r'F:\native_digestion\01242023\analysis/distance_to_center_times_normIntensity_filter_norm01_removelast2.tsv',
+        sep='\t', index_col=0).index.tolist()
     # control_df = pd.read_excel('D:/data/native_protein_digestion/12072021/control/spearman_corr_pval_nofill.xlsx',index_col=0)
     # protein_cand_list = control_df.loc[(control_df['spearman correlation']<0)&(control_df['p value']<0.05)].index.tolist()
     time_points = [f for f in psm_dict]
+    show_3d_batch_2(psm_dict, protein_list, protein_dict, pdb_base_path,
+                    png_save_path='F:/native_digestion/01242023/3d_mapping/')
     # for each_protein in protein_to_check:
-    for each_protein in ['Q14157']:
+    # for each_protein in ['Q14157']:
     # for each_protein in protein_list:
-    pdb_file_name = 'AF-' + each_protein + '-F1-model_v1.pdb'
-    if os.path.exists(pdb_base_path + pdb_file_name):
-        print(each_protein)
-        for val in time_points:
-            print(val)
-            psm_list = psm_dict[val]
-            show_cov_3d(psm_list, protein_dict[each_protein], pdb_base_path + pdb_file_name,
-                        png_sava_path='F:/native_digestion/01242023/3d_mapping/' + each_protein + '_' + val + '_trypsin.png')
-
-    else:
-        print(f"{pdb_file_name} not existed")
+    #     pdb_file_name = 'AF-' + each_protein + '-F1-model_v1.pdb'
+    #     if os.path.exists(pdb_base_path + pdb_file_name):
+    #         print(each_protein)
+    #         for val in time_points:
+    #             print(val)
+    #             psm_list = psm_dict[val]
+    #             show_cov_3d(psm_list, protein_dict[each_protein], pdb_base_path + pdb_file_name,
+    #                         png_sava_path='F:/native_digestion/01242023/3d_mapping/' + each_protein + '_' + val + '_trypsin.png')
+    #
+    #     else:
+    #         print(f"{pdb_file_name} not existed")
 
     ### map peptides to pdbs
     # for each_protein in protein_to_check:

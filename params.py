@@ -23,3 +23,4 @@ aa_dict = {'ALA':'A',
            'SEC': 'U'}
 
 aa_reg_str = '|'.join([key for key in aa_dict])
+avoid_charac = {'HOH', 'NAG'}
